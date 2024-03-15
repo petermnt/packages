@@ -126,6 +126,7 @@
                                           binaryMessenger:self.binaryMessenger
                                           instanceManager:self.instanceManager];
   [self.instanceManager addDartCreatedInstance:webView withIdentifier:identifier];
+  [self applyVrtOverridesForWebViewWithIdentifier:identifier];
 }
 
 - (void)loadRequestForWebViewWithIdentifier:(NSInteger)identifier
@@ -314,5 +315,17 @@
                                       error:
                                           (FlutterError *_Nullable __autoreleasing *_Nonnull)error {
   return [[self webViewForIdentifier:identifier] customUserAgent];
+}
+
+- (void)applyVrtOverridesForWebViewWithIdentifier:(NSInteger)identifier {
+  FWFWebView *webView = [self webViewForIdentifier:identifier];
+  // allow link previews
+  [webView setAllowsLinkPreview:false];
+  // prefered content mode
+  if (@available(iOS 13.0, *)) {
+    WKWebpagePreferences* preferences = [[webView configuration] defaultWebpagePreferences];
+    [preferences setPreferredContentMode:WKContentModeMobile];
+    [[webView configuration] setDefaultWebpagePreferences:preferences];
+  }
 }
 @end
