@@ -4,9 +4,6 @@
 
 import 'dart:async';
 import 'dart:io';
-// TODO(a14n): remove this import once Flutter 3.1 or later reaches stable (including flutter/flutter#104231)
-// ignore: unnecessary_import
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -60,8 +57,9 @@ void main() {
       'live stream duration != 0',
       (WidgetTester tester) async {
         final VideoPlayerController networkController =
-            VideoPlayerController.network(
-          'https://flutter.github.io/assets-for-api-docs/assets/videos/hls/bee.m3u8',
+            VideoPlayerController.networkUrl(
+          Uri.parse(
+              'https://flutter.github.io/assets-for-api-docs/assets/videos/hls/bee.m3u8'),
         );
         await networkController.initialize();
 
@@ -135,6 +133,18 @@ void main() {
         await controller.seekTo(tenMillisBeforeEnd);
         await controller.play();
         await tester.pumpAndSettle(_playDuration);
+        // Android emulators in our CI have frequent flake where the video
+        // reports as still playing (usually without having advanced at all
+        // past the seek position, but sometimes having advanced some); if that
+        // happens, the thing being tested hasn't even had a chance to happen
+        // due to CI issues, so just report it as skipped.
+        // TODO(stuartmorgan): Remove once
+        // https://github.com/flutter/flutter/issues/141145 is fixed.
+        if ((!kIsWeb && Platform.isAndroid) && controller.value.isPlaying) {
+          markTestSkipped(
+              'Skipping due to https://github.com/flutter/flutter/issues/141145');
+          return;
+        }
         expect(controller.value.isPlaying, false);
         expect(controller.value.position, controller.value.duration);
 
@@ -144,6 +154,8 @@ void main() {
         expect(controller.value.isPlaying, false);
         expect(controller.value.position, tenMillisBeforeEnd);
       },
+      // Flaky on web: https://github.com/flutter/flutter/issues/130147
+      skip: kIsWeb,
     );
 
     testWidgets(
@@ -157,6 +169,18 @@ void main() {
             controller.value.duration - const Duration(milliseconds: 10));
         await controller.play();
         await tester.pumpAndSettle(_playDuration);
+        // Android emulators in our CI have frequent flake where the video
+        // reports as still playing (usually without having advanced at all
+        // past the seek position, but sometimes having advanced some); if that
+        // happens, the thing being tested hasn't even had a chance to happen
+        // due to CI issues, so just report it as skipped.
+        // TODO(stuartmorgan): Remove once
+        // https://github.com/flutter/flutter/issues/141145 is fixed.
+        if ((!kIsWeb && Platform.isAndroid) && controller.value.isPlaying) {
+          markTestSkipped(
+              'Skipping due to https://github.com/flutter/flutter/issues/141145');
+          return;
+        }
         expect(controller.value.isPlaying, false);
         expect(controller.value.position, controller.value.duration);
 
@@ -233,8 +257,8 @@ void main() {
 
   group('network videos', () {
     setUp(() {
-      controller = VideoPlayerController.network(
-          getUrlForAssetAsNetworkSource(_videoAssetKey));
+      controller = VideoPlayerController.networkUrl(
+          Uri.parse(getUrlForAssetAsNetworkSource(_videoAssetKey)));
     });
 
     testWidgets(

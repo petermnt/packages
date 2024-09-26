@@ -14,6 +14,7 @@ import 'package:yaml/yaml.dart';
 
 import 'core.dart';
 import 'git_version_finder.dart';
+import 'output_utils.dart';
 import 'process_runner.dart';
 import 'repository_package.dart';
 
@@ -42,10 +43,18 @@ abstract class PackageCommand extends Command<void> {
     this.platform = const LocalPlatform(),
     GitDir? gitDir,
   }) : _gitDir = gitDir {
+    thirdPartyPackagesDir = packagesDir.parent
+        .childDirectory('third_party')
+        .childDirectory('packages');
+
     argParser.addMultiOption(
       _packagesArg,
       help:
-          'Specifies which packages the command should run on (before sharding).\n',
+          'Specifies which packages the command should run on (before sharding).\n'
+          'If a package name is the name of a plugin group, it will include '
+          'the entire group; to avoid this, use group/package as the name '
+          '(e.g., shared_preferences/shared_preferences), or pass '
+          '--$_exactMatchOnlyArg',
       valueHelp: 'package1,package2,...',
       aliases: <String>[_pluginsLegacyAliasArg],
     );
@@ -62,6 +71,9 @@ abstract class PackageCommand extends Command<void> {
       valueHelp: 'n',
       defaultsTo: '1',
     );
+    argParser.addFlag(_exactMatchOnlyArg,
+        help: 'Disables package group matching in package selection.',
+        negatable: false);
     argParser.addMultiOption(
       _excludeArg,
       abbr: 'e',
@@ -71,6 +83,7 @@ abstract class PackageCommand extends Command<void> {
       defaultsTo: <String>[],
     );
     argParser.addFlag(_runOnChangedPackagesArg,
+        negatable: false,
         help: 'Run the command on changed packages.\n'
             'If no packages have changed, or if there have been changes that may\n'
             'affect all packages, the command runs on all packages.\n'
@@ -78,18 +91,37 @@ abstract class PackageCommand extends Command<void> {
             'See $_baseShaArg if a custom base is needed to determine the diff.\n\n'
             'Cannot be combined with $_packagesArg.\n');
     argParser.addFlag(_runOnDirtyPackagesArg,
+        negatable: false,
         help:
             'Run the command on packages with changes that have not been committed.\n'
             'Packages excluded with $_excludeArg are excluded even if changed.\n'
             'Cannot be combined with $_packagesArg.\n',
         hide: true);
     argParser.addFlag(_packagesForBranchArg,
+        negatable: false,
         help: 'This runs on all packages changed in the last commit on main '
             '(or master), and behaves like --run-on-changed-packages on '
             'any other branch.\n\n'
             'Cannot be combined with $_packagesArg.\n\n'
             'This is intended for use in CI.\n',
         hide: true);
+    argParser.addMultiOption(_filterPackagesArg,
+        help: 'Filters any selected packages to only those included in this '
+            'list. This is intended for use in CI with flags such as '
+            '--$_packagesForBranchArg.\n\n'
+            'Entries can be package names or YAML files that contain a list '
+            'of package names.',
+        defaultsTo: <String>[],
+        hide: true);
+    argParser.addFlag(_currentPackageArg,
+        negatable: false,
+        help:
+            'Set the target package(s) based on the current working directory.\n'
+            '- If the current working directory is (or is inside) a package, '
+            'that package will be targeted.\n'
+            '- If the current working directory is the root of a federated '
+            'plugin group, that group will be targeted.\n'
+            'Cannot be combined with $_packagesArg.\n');
     argParser.addOption(_baseShaArg,
         help: 'The base sha used to determine git diff. \n'
             'This is useful when $_runOnChangedPackagesArg is specified.\n'
@@ -104,20 +136,30 @@ abstract class PackageCommand extends Command<void> {
             'but more information may be added in the future.');
   }
 
-  static const String _baseBranchArg = 'base-branch';
-  static const String _baseShaArg = 'base-sha';
-  static const String _excludeArg = 'exclude';
-  static const String _logTimingArg = 'log-timing';
+  // Package selection.
   static const String _packagesArg = 'packages';
   static const String _packagesForBranchArg = 'packages-for-branch';
+  static const String _currentPackageArg = 'current-package';
   static const String _pluginsLegacyAliasArg = 'plugins';
   static const String _runOnChangedPackagesArg = 'run-on-changed-packages';
   static const String _runOnDirtyPackagesArg = 'run-on-dirty-packages';
+  static const String _exactMatchOnlyArg = 'exact-match-only';
+  static const String _excludeArg = 'exclude';
+  static const String _filterPackagesArg = 'filter-packages-to';
+  // Diff base selection.
+  static const String _baseBranchArg = 'base-branch';
+  static const String _baseShaArg = 'base-sha';
+  // Sharding.
   static const String _shardCountArg = 'shardCount';
   static const String _shardIndexArg = 'shardIndex';
+  // Utility.
+  static const String _logTimingArg = 'log-timing';
 
   /// The directory containing the packages.
   final Directory packagesDir;
+
+  /// The directory containing packages wrapping third-party code.
+  late Directory thirdPartyPackagesDir;
 
   /// The process runner.
   ///
@@ -230,18 +272,25 @@ abstract class PackageCommand extends Command<void> {
     _shardCount = shardCount;
   }
 
+  /// Converts a list of items which are either package names or yaml files
+  /// containing a list of package names to a flat list of package names by
+  /// reading all the file contents.
+  Set<String> _expandYamlInPackageList(List<String> items) {
+    return items.expand<String>((String item) {
+      if (item.endsWith('.yaml')) {
+        final File file = packagesDir.fileSystem.file(item);
+        return (loadYaml(file.readAsStringSync()) as YamlList)
+            .toList()
+            .cast<String>();
+      }
+      return <String>[item];
+    }).toSet();
+  }
+
   /// Returns the set of packages to exclude based on the `--exclude` argument.
   Set<String> getExcludedPackageNames() {
     final Set<String> excludedPackages = _excludedPackages ??
-        getStringListArg(_excludeArg).expand<String>((String item) {
-          if (item.endsWith('.yaml')) {
-            final File file = packagesDir.fileSystem.file(item);
-            return (loadYaml(file.readAsStringSync()) as YamlList)
-                .toList()
-                .cast<String>();
-          }
-          return <String>[item];
-        }).toSet();
+        _expandYamlInPackageList(getStringListArg(_excludeArg));
     // Cache for future calls.
     _excludedPackages = excludedPackages;
     return excludedPackages;
@@ -308,15 +357,26 @@ abstract class PackageCommand extends Command<void> {
       _runOnChangedPackagesArg,
       _runOnDirtyPackagesArg,
       _packagesForBranchArg,
+      _currentPackageArg,
     };
     if (packageSelectionFlags
             .where((String flag) => argResults!.wasParsed(flag))
             .length >
         1) {
-      printError('Only one of --$_packagesArg, --$_runOnChangedPackagesArg, or '
-          '--$_packagesForBranchArg can be provided.');
+      printError('Only one of the package selection arguments '
+          '(${packageSelectionFlags.join(", ")}) '
+          'can be provided.');
       throw ToolExit(exitInvalidArguments);
     }
+
+    // Whether to require that a package name exactly match to be included,
+    // rather than allowing package groups for federated plugins. Any cases
+    // where the set of packages is determined programatically based on repo
+    // state should use exact matching.
+    final bool allowGroupMatching = !(getBoolArg(_exactMatchOnlyArg) ||
+        argResults!.wasParsed(_runOnChangedPackagesArg) ||
+        argResults!.wasParsed(_runOnDirtyPackagesArg) ||
+        argResults!.wasParsed(_packagesForBranchArg));
 
     Set<String> packages = Set<String>.from(getStringListArg(_packagesArg));
 
@@ -383,54 +443,105 @@ abstract class PackageCommand extends Command<void> {
       if (packages.isEmpty) {
         return;
       }
+    } else if (getBoolArg(_currentPackageArg)) {
+      final String? currentPackageName = _getCurrentDirectoryPackageName();
+      if (currentPackageName == null) {
+        printError('Unable to determine packages; --$_currentPackageArg can '
+            'only be used within a repository package or package group.');
+        throw ToolExit(exitInvalidArguments);
+      }
+      packages = <String>{currentPackageName};
     }
 
-    final Directory thirdPartyPackagesDirectory = packagesDir.parent
-        .childDirectory('third_party')
-        .childDirectory('packages');
-
     final Set<String> excludedPackageNames = getExcludedPackageNames();
+    final bool hasFilter = argResults?.wasParsed(_filterPackagesArg) ?? false;
+    final Set<String>? excludeAllButPackageNames = hasFilter
+        ? _expandYamlInPackageList(getStringListArg(_filterPackagesArg))
+        : null;
+    if (excludeAllButPackageNames != null &&
+        excludeAllButPackageNames.isNotEmpty) {
+      final List<String> sortedList = excludeAllButPackageNames.toList()
+        ..sort();
+      print('--$_filterPackagesArg is excluding packages that are not '
+          'included in: ${sortedList.join(',')}');
+    }
+    // Returns true if a package that could be identified by any of
+    // `possibleNames` should be excluded.
+    bool isExcluded(Set<String> possibleNames) {
+      if (excludedPackageNames.intersection(possibleNames).isNotEmpty) {
+        return true;
+      }
+      return excludeAllButPackageNames != null &&
+          excludeAllButPackageNames.intersection(possibleNames).isEmpty;
+    }
+
+    await for (final RepositoryPackage package in _everyTopLevelPackage()) {
+      if (packages.isEmpty ||
+          packages
+              .intersection(_possiblePackageIdentifiers(package,
+                  allowGroup: allowGroupMatching))
+              .isNotEmpty) {
+        // Exclusion is always human input, so groups should always be allowed
+        // unless they have been specifically forbidden.
+        final bool excluded = isExcluded(_possiblePackageIdentifiers(package,
+            allowGroup: !getBoolArg(_exactMatchOnlyArg)));
+        yield PackageEnumerationEntry(package, excluded: excluded);
+      }
+    }
+  }
+
+  /// Returns every top-level package in the repository, according to repository
+  /// conventions.
+  ///
+  /// In particular, it returns:
+  /// - Every package that is a direct child of one of the know "packages"
+  ///   directories.
+  /// - Every package that is a direct child of a non-package subdirectory of
+  ///   one of those directories (to cover federated plugin groups).
+  Stream<RepositoryPackage> _everyTopLevelPackage() async* {
     for (final Directory dir in <Directory>[
       packagesDir,
-      if (thirdPartyPackagesDirectory.existsSync()) thirdPartyPackagesDirectory,
+      if (thirdPartyPackagesDir.existsSync()) thirdPartyPackagesDir,
     ]) {
       await for (final FileSystemEntity entity
           in dir.list(followLinks: false)) {
         // A top-level Dart package is a standard package.
         if (isPackage(entity)) {
-          if (packages.isEmpty || packages.contains(p.basename(entity.path))) {
-            yield PackageEnumerationEntry(
-                RepositoryPackage(entity as Directory),
-                excluded: excludedPackageNames.contains(entity.basename));
-          }
+          yield RepositoryPackage(entity as Directory);
         } else if (entity is Directory) {
           // Look for Dart packages under this top-level directory; this is the
           // standard structure for federated plugins.
           await for (final FileSystemEntity subdir
               in entity.list(followLinks: false)) {
             if (isPackage(subdir)) {
-              // There are three ways for a federated plugin to match:
-              // - package name (path_provider_android)
-              // - fully specified name (path_provider/path_provider_android)
-              // - group name (path_provider), which matches all packages in
-              //   the group
-              final Set<String> possibleMatches = <String>{
-                path.basename(subdir.path), // package name
-                path.basename(entity.path), // group name
-                path.relative(subdir.path, from: dir.path), // fully specified
-              };
-              if (packages.isEmpty ||
-                  packages.intersection(possibleMatches).isNotEmpty) {
-                yield PackageEnumerationEntry(
-                    RepositoryPackage(subdir as Directory),
-                    excluded: excludedPackageNames
-                        .intersection(possibleMatches)
-                        .isNotEmpty);
-              }
+              yield RepositoryPackage(subdir as Directory);
             }
           }
         }
       }
+    }
+  }
+
+  Set<String> _possiblePackageIdentifiers(
+    RepositoryPackage package, {
+    required bool allowGroup,
+  }) {
+    final String packageName = path.basename(package.path);
+    if (package.isFederated) {
+      // There are three ways for a federated plugin to be identified:
+      // - package name (path_provider_android).
+      // - fully specified name (path_provider/path_provider_android).
+      // - group name (path_provider), which includes all packages in
+      //   the group.
+      final io.Directory parentDir = package.directory.parent;
+      return <String>{
+        packageName,
+        path.relative(package.path,
+            from: parentDir.parent.path), // fully specified
+        if (allowGroup) path.basename(parentDir.path), // group name
+      };
+    } else {
+      return <String>{packageName};
     }
   }
 
@@ -545,6 +656,40 @@ abstract class PackageCommand extends Command<void> {
     return packages;
   }
 
+  String? _getCurrentDirectoryPackageName() {
+    // Ensure that the current directory is within the packages directory.
+    final Directory absolutePackagesDir = packagesDir.absolute;
+    Directory currentDir = packagesDir.fileSystem.currentDirectory.absolute;
+    if (!currentDir.path.startsWith(absolutePackagesDir.path) ||
+        currentDir.path == packagesDir.path) {
+      return null;
+    }
+    // If the current directory is a direct subdirectory of the packages
+    // directory, then that's the target.
+    if (currentDir.parent.path == absolutePackagesDir.path) {
+      return currentDir.basename;
+    }
+    // Otherwise, walk up until a package is found...
+    while (!isPackage(currentDir)) {
+      currentDir = currentDir.parent;
+      if (currentDir.path == absolutePackagesDir.path) {
+        return null;
+      }
+    }
+    // ... and then check whether it has an enclosing package.
+    final RepositoryPackage package = RepositoryPackage(currentDir);
+    final RepositoryPackage? enclosingPackage = package.getEnclosingPackage();
+    final RepositoryPackage rootPackage = enclosingPackage ?? package;
+    final String name = rootPackage.directory.basename;
+    // For an app-facing package in a federated plugin, return the fully
+    // qualified name, since returning just the name will cause the entire
+    // group to run.
+    if (rootPackage.directory.parent.basename == name) {
+      return '$name/$name';
+    }
+    return name;
+  }
+
   // Returns true if the current checkout is on an ancestor of [branch].
   //
   // This is used because CI may check out a specific hash rather than a branch,
@@ -589,13 +734,12 @@ abstract class PackageCommand extends Command<void> {
   bool _changesRequireFullTest(List<String> changedFiles) {
     const List<String> specialFiles = <String>[
       '.ci.yaml', // LUCI config.
-      '.cirrus.yml', // Cirrus config.
       '.clang-format', // ObjC and C/C++ formatting options.
       'analysis_options.yaml', // Dart analysis settings.
     ];
     const List<String> specialDirectories = <String>[
       '.ci/', // Support files for CI.
-      'script/', // This tool, and its wrapper scripts.
+      'script/', // This tool.
     ];
     // Directory entries must end with / to avoid over-matching, since the
     // check below is done via string prefixing.

@@ -2,12 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-part of google_maps_flutter_web;
+part of '../google_maps_flutter_web.dart';
 
 /// Type used when passing an override to the _createMap function.
 @visibleForTesting
 typedef DebugCreateMapFunction = gmaps.GMap Function(
-    HtmlElement div, gmaps.MapOptions options);
+    HTMLElement div, gmaps.MapOptions options);
+
+/// Type used when passing an override to the _setOptions function.
+@visibleForTesting
+typedef DebugSetOptionsFunction = void Function(gmaps.MapOptions options);
 
 /// Encapsulates a [gmaps.GMap], its events, and where in the DOM it's rendered.
 class GoogleMapController {
@@ -25,21 +29,24 @@ class GoogleMapController {
         _polygons = mapObjects.polygons,
         _polylines = mapObjects.polylines,
         _circles = mapObjects.circles,
+        _tileOverlays = mapObjects.tileOverlays,
         _lastMapConfiguration = mapConfiguration {
     _circlesController = CirclesController(stream: _streamController);
     _polygonsController = PolygonsController(stream: _streamController);
     _polylinesController = PolylinesController(stream: _streamController);
     _markersController = MarkersController(stream: _streamController);
+    _tileOverlaysController = TileOverlaysController();
+    _updateStylesFromConfiguration(mapConfiguration);
 
     // Register the view factory that will hold the `_div` that holds the map in the DOM.
     // The `_div` needs to be created outside of the ViewFactory (and cached!) so we can
     // use it to create the [gmaps.GMap] in the `init()` method of this class.
-    _div = DivElement()
+    _div = createDivElement()
       ..id = _getViewType(mapId)
       ..style.width = '100%'
       ..style.height = '100%';
 
-    ui.platformViewRegistry.registerViewFactory(
+    ui_web.platformViewRegistry.registerViewFactory(
       _getViewType(mapId),
       (int viewId) => _div,
     );
@@ -53,17 +60,28 @@ class GoogleMapController {
   final Set<Polygon> _polygons;
   final Set<Polyline> _polylines;
   final Set<Circle> _circles;
-  // The configuraiton passed by the user, before converting to gmaps.
+  Set<TileOverlay> _tileOverlays;
+  // The configuration passed by the user, before converting to gmaps.
   // Caching this allows us to re-create the map faithfully when needed.
   MapConfiguration _lastMapConfiguration = const MapConfiguration();
   List<gmaps.MapTypeStyle> _lastStyles = const <gmaps.MapTypeStyle>[];
+  // The last error resulting from providing a map style, if any.
+  String? _lastStyleError;
+
+  /// Configuration accessor for the [GoogleMapsInspectorWeb].
+  ///
+  /// Returns the latest value of [MapConfiguration] set by the programmer.
+  ///
+  /// This should only be used by an inspector instance created when a test
+  /// calls [GoogleMapsPlugin.enableDebugInspection].
+  MapConfiguration get configuration => _lastMapConfiguration;
 
   // Creates the 'viewType' for the _widget
   String _getViewType(int mapId) => 'plugins.flutter.io/google_maps_$mapId';
 
   // The Flutter widget that contains the rendered Map.
   HtmlElementView? _widget;
-  late HtmlElement _div;
+  late HTMLElement _div;
 
   /// The Flutter widget that will contain the rendered Map. Used for caching.
   Widget? get widget {
@@ -100,6 +118,7 @@ class GoogleMapController {
   PolygonsController? _polygonsController;
   PolylinesController? _polylinesController;
   MarkersController? _markersController;
+  TileOverlaysController? _tileOverlaysController;
   // Keeps track if _attachGeometryControllers has been called or not.
   bool _controllersBoundToMap = false;
 
@@ -110,21 +129,26 @@ class GoogleMapController {
   @visibleForTesting
   void debugSetOverrides({
     DebugCreateMapFunction? createMap,
+    DebugSetOptionsFunction? setOptions,
     MarkersController? markers,
     CirclesController? circles,
     PolygonsController? polygons,
     PolylinesController? polylines,
+    TileOverlaysController? tileOverlays,
   }) {
     _overrideCreateMap = createMap;
+    _overrideSetOptions = setOptions;
     _markersController = markers ?? _markersController;
     _circlesController = circles ?? _circlesController;
     _polygonsController = polygons ?? _polygonsController;
     _polylinesController = polylines ?? _polylinesController;
+    _tileOverlaysController = tileOverlays ?? _tileOverlaysController;
   }
 
   DebugCreateMapFunction? _overrideCreateMap;
+  DebugSetOptionsFunction? _overrideSetOptions;
 
-  gmaps.GMap _createMap(HtmlElement div, gmaps.MapOptions options) {
+  gmaps.GMap _createMap(HTMLElement div, gmaps.MapOptions options) {
     if (_overrideCreateMap != null) {
       return _overrideCreateMap!(div, options);
     }
@@ -161,6 +185,11 @@ class GoogleMapController {
     // Initial position can only to be set here!
     options = _applyInitialPosition(_initialCameraPosition, options);
 
+    // Fully disable 45 degree imagery if desired
+    if (options.rotateControl == false) {
+      options.tilt = 0;
+    }
+
     // Create the map...
     final gmaps.GMap map = _createMap(_div, options);
     _googleMap = map;
@@ -169,13 +198,7 @@ class GoogleMapController {
     _attachGeometryControllers(map);
 
     // Now attach the geometry, traffic and any other layers...
-    _renderInitialGeometry(
-      markers: _markers,
-      circles: _circles,
-      polygons: _polygons,
-      polylines: _polylines,
-    );
-
+    _renderInitialGeometry();
     _setTrafficLayer(map, _lastMapConfiguration.trafficEnabled ?? false);
   }
 
@@ -228,22 +251,20 @@ class GoogleMapController {
         'Cannot attach a map to a null PolylinesController instance.');
     assert(_markersController != null,
         'Cannot attach a map to a null MarkersController instance.');
+    assert(_tileOverlaysController != null,
+        'Cannot attach a map to a null TileOverlaysController instance.');
 
     _circlesController!.bindToMap(_mapId, map);
     _polygonsController!.bindToMap(_mapId, map);
     _polylinesController!.bindToMap(_mapId, map);
     _markersController!.bindToMap(_mapId, map);
+    _tileOverlaysController!.bindToMap(_mapId, map);
 
     _controllersBoundToMap = true;
   }
 
   // Renders the initial sets of geometry.
-  void _renderInitialGeometry({
-    Set<Marker> markers = const <Marker>{},
-    Set<Circle> circles = const <Circle>{},
-    Set<Polygon> polygons = const <Polygon>{},
-    Set<Polyline> polylines = const <Polyline>{},
-  }) {
+  void _renderInitialGeometry() {
     assert(
         _controllersBoundToMap,
         'Geometry controllers must be bound to a map before any geometry can '
@@ -253,10 +274,11 @@ class GoogleMapController {
     // in the [_attachGeometryControllers] method, which ensures that all these
     // controllers below are *not* null.
 
-    _markersController!.addMarkers(markers);
-    _circlesController!.addCircles(circles);
-    _polygonsController!.addPolygons(polygons);
-    _polylinesController!.addPolylines(polylines);
+    _markersController!.addMarkers(_markers);
+    _circlesController!.addCircles(_circles);
+    _polygonsController!.addPolygons(_polygons);
+    _polylinesController!.addPolylines(_polylines);
+    _tileOverlaysController!.addTileOverlays(_tileOverlays);
   }
 
   // Merges new options coming from the plugin into _lastConfiguration.
@@ -267,15 +289,36 @@ class GoogleMapController {
     return _lastMapConfiguration;
   }
 
+  // TODO(stuartmorgan): Refactor so that _lastMapConfiguration.style is the
+  // source of truth for style info. Currently it's tracked and handled
+  // separately since style didn't used to be part of the configuration.
+  List<gmaps.MapTypeStyle> _updateStylesFromConfiguration(
+      MapConfiguration update) {
+    if (update.style != null) {
+      // Provide async access to the error rather than throwing, to match the
+      // behavior of other platforms where there's no mechanism to return errors
+      // from configuration updates.
+      try {
+        _lastStyles = _mapStyles(update.style);
+        _lastStyleError = null;
+      } on MapStyleException catch (e) {
+        _lastStyleError = e.cause;
+      }
+    }
+    return _lastStyles;
+  }
+
   /// Updates the map options from a [MapConfiguration].
   ///
   /// This method converts the map into the proper [gmaps.MapOptions].
   void updateMapConfiguration(MapConfiguration update) {
     assert(_googleMap != null, 'Cannot update options on a null map.');
 
+    final List<gmaps.MapTypeStyle> styles =
+        _updateStylesFromConfiguration(update);
     final MapConfiguration newConfiguration = _mergeConfigurations(update);
     final gmaps.MapOptions newOptions =
-        _configurationAndStyleToGmapsOptions(newConfiguration, _lastStyles);
+        _configurationAndStyleToGmapsOptions(newConfiguration, styles);
 
     _setOptions(newOptions);
     _setTrafficLayer(_googleMap!, newConfiguration.trafficEnabled ?? false);
@@ -288,9 +331,19 @@ class GoogleMapController {
         _configurationAndStyleToGmapsOptions(_lastMapConfiguration, styles));
   }
 
+  /// A getter for the current styles. Only for tests.
+  @visibleForTesting
+  List<gmaps.MapTypeStyle> get styles => _lastStyles;
+
+  /// Returns the last error from setting the map's style, if any.
+  String? get lastStyleError => _lastStyleError;
+
   // Sets new [gmaps.MapOptions] on the wrapped map.
   // ignore: use_setters_to_change_properties
   void _setOptions(gmaps.MapOptions options) {
+    if (_overrideSetOptions != null) {
+      return _overrideSetOptions!(options);
+    }
     _googleMap?.options = options;
   }
 
@@ -394,6 +447,25 @@ class GoogleMapController {
     _markersController?.removeMarkers(updates.markerIdsToRemove);
   }
 
+  /// Updates the set of [TileOverlay]s.
+  void updateTileOverlays(Set<TileOverlay> newOverlays) {
+    final MapsObjectUpdates<TileOverlay> updates =
+        MapsObjectUpdates<TileOverlay>.from(_tileOverlays, newOverlays,
+            objectName: 'tileOverlay');
+    assert(_tileOverlaysController != null,
+        'Cannot update tile overlays after dispose().');
+    _tileOverlaysController?.addTileOverlays(updates.objectsToAdd);
+    _tileOverlaysController?.changeTileOverlays(updates.objectsToChange);
+    _tileOverlaysController
+        ?.removeTileOverlays(updates.objectIdsToRemove.cast<TileOverlayId>());
+    _tileOverlays = newOverlays;
+  }
+
+  /// Clears the tile cache associated with the given [TileOverlayId].
+  void clearTileCache(TileOverlayId id) {
+    _tileOverlaysController?.clearTileCache(id);
+  }
+
   /// Shows the [InfoWindow] of the marker identified by its [MarkerId].
   void showInfoWindow(MarkerId markerId) {
     assert(_markersController != null,
@@ -426,6 +498,7 @@ class GoogleMapController {
     _polygonsController = null;
     _polylinesController = null;
     _markersController = null;
+    _tileOverlaysController = null;
     _streamController.close();
   }
 }

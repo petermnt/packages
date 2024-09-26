@@ -26,11 +26,8 @@ apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
     namespace 'io.flutter.plugins.quickactionsexample'
-    compileSdkVersion flutter.compileSdkVersion
+    compileSdk flutter.compileSdkVersion
 
-    lintOptions {
-        disable 'InvalidPackage'
-    }
 
     defaultConfig {
         applicationId "io.flutter.plugins.quickactionsexample"
@@ -45,6 +42,9 @@ android {
         release {
             signingConfig signingConfigs.debug
         }
+    }
+    lint {
+        disable 'InvalidPackage'
     }
 }
 

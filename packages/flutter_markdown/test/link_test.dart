@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -28,8 +29,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
 
         final List<Type> gestureRecognizerTypes = <Type>[];
         span.visitChildren((InlineSpan inlineSpan) {
@@ -73,9 +74,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget =
-            tester.widgetList(find.byType(RichText)).first as RichText;
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
 
         final List<Type> gestureRecognizerTypes = <Type>[];
         span.visitChildren((InlineSpan inlineSpan) {
@@ -126,7 +126,7 @@ void defineTests() {
         await tester.pumpWidget(toBePumped);
 
         //Assert
-        final Finder widgetFinder = find.byType(RichText);
+        final Finder widgetFinder = find.byType(Text);
         final List<Element> elements = widgetFinder.evaluate().toList();
         final List<Widget> widgets =
             elements.map((Element e) => e.widget).toList();
@@ -161,7 +161,7 @@ void defineTests() {
         await tester.pumpWidget(toBePumped);
 
         //Assert
-        final Finder widgetFinder = find.byType(RichText, skipOffstage: false);
+        final Finder widgetFinder = find.byType(Text, skipOffstage: false);
         final List<Element> elements = widgetFinder.evaluate().toList();
         final List<Widget> widgets =
             elements.map((Element e) => e.widget).toList();
@@ -937,8 +937,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
         expect(span.children![0], isA<TextSpan>());
         expect(span.children![0].toPlainText(), '[link ');
@@ -985,8 +985,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 5);
         expectTextSpanStyle(
             span.children![0] as TextSpan, null, FontWeight.normal);
@@ -1065,8 +1065,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 3);
         expect(span.children![0], isA<TextSpan>());
         expect(span.children![0].toPlainText(), '[foo ');
@@ -1095,8 +1095,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 5);
         expect(span.children, everyElement(isA<TextSpan>()));
 
@@ -1147,8 +1147,13 @@ void defineTests() {
         final Finder imageFinder = find.byType(Image);
         expect(imageFinder, findsOneWidget);
         final Image image = imageFinder.evaluate().first.widget as Image;
-        final FileImage fi = image.image as FileImage;
-        expect(fi.file.path, equals('uri3'));
+        if (kIsWeb) {
+          final NetworkImage fi = image.image as NetworkImage;
+          expect(fi.url.endsWith('uri3'), true);
+        } else {
+          final FileImage fi = image.image as FileImage;
+          expect(fi.file.path, equals('uri3'));
+        }
         expect(linkTapResults, isNull);
       },
     );
@@ -1169,8 +1174,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
         expect(span.children![0], isA<TextSpan>());
         expect(span.children![0].toPlainText(), '*');
@@ -1214,8 +1219,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
         expect(span.children, everyElement(isA<TextSpan>()));
 
@@ -1270,8 +1275,8 @@ void defineTests() {
         final Finder gestureFinder = find.byType(GestureDetector);
         expect(gestureFinder, findsNothing);
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
         expect(span.children, everyElement(isA<TextSpan>()));
 
@@ -1303,8 +1308,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
         expect(span.children, everyElement(isA<TextSpan>()));
 
@@ -1403,8 +1408,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 5);
         expect(span.children, everyElement(isA<TextSpan>()));
 
@@ -1491,8 +1496,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 4);
 
         expect(span.children![0], isA<TextSpan>());
@@ -1525,8 +1530,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 5);
 
         expect(span.children![0], isA<TextSpan>());
@@ -1572,8 +1577,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
         expect(span.children![0], isA<TextSpan>());
         expect(span.children![0].toPlainText(), '*');
@@ -1601,8 +1606,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
 
         expectLinkTextSpan(span.children![0] as TextSpan, 'foo *bar');
@@ -1658,8 +1663,8 @@ void defineTests() {
         final Finder gestureFinder = find.byType(GestureDetector);
         expect(gestureFinder, findsNothing);
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
         expect(span.children, everyElement(isA<TextSpan>()));
 
@@ -1691,8 +1696,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
         expect(span.children, everyElement(isA<TextSpan>()));
 
@@ -1774,8 +1779,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
 
         expectLinkTextSpan(span.children![0] as TextSpan, 'Толпой');
@@ -1825,8 +1830,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
 
         expect(span.children![0], isA<TextSpan>());
@@ -1856,8 +1861,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
 
         expect(span.children![0], isA<TextSpan>());
@@ -1967,21 +1972,21 @@ void defineTests() {
           ),
         );
 
-        final List<RichText> textWidgets =
-            tester.widgetList(find.byType(RichText)).toList().cast<RichText>();
+        final List<Text> textWidgets =
+            tester.widgetList(find.byType(Text)).toList().cast<Text>();
         expect(textWidgets.length, 2);
 
-        expect(textWidgets[0].text, isNotNull);
-        expect(textWidgets[0].text, isA<TextSpan>());
-        expect(textWidgets[0].text.toPlainText(), '[foo][ref[bar]]');
+        expect(textWidgets[0].textSpan, isNotNull);
+        expect(textWidgets[0].textSpan, isA<TextSpan>());
+        expect(textWidgets[0].textSpan!.toPlainText(), '[foo][ref[bar]]');
         expectTextSpanStyle(
-            textWidgets[0].text as TextSpan, null, FontWeight.normal);
+            textWidgets[0].textSpan! as TextSpan, null, FontWeight.normal);
 
-        expect(textWidgets[1].text, isNotNull);
-        expect(textWidgets[1].text, isA<TextSpan>());
-        expect(textWidgets[1].text.toPlainText(), '[ref[bar]]: /uri');
+        expect(textWidgets[1].textSpan, isNotNull);
+        expect(textWidgets[1].textSpan, isA<TextSpan>());
+        expect(textWidgets[1].textSpan!.toPlainText(), '[ref[bar]]: /uri');
         expectTextSpanStyle(
-            textWidgets[1].text as TextSpan, null, FontWeight.normal);
+            textWidgets[1].textSpan! as TextSpan, null, FontWeight.normal);
 
         expect(linkTapResults, isNull);
       },
@@ -2003,21 +2008,21 @@ void defineTests() {
           ),
         );
 
-        final List<RichText> textWidgets =
-            tester.widgetList(find.byType(RichText)).toList().cast<RichText>();
+        final List<Text> textWidgets =
+            tester.widgetList(find.byType(Text)).toList().cast<Text>();
         expect(textWidgets.length, 2);
 
-        expect(textWidgets[0].text, isNotNull);
-        expect(textWidgets[0].text, isA<TextSpan>());
-        expect(textWidgets[0].text.toPlainText(), '[[[foo]]]');
+        expect(textWidgets[0].textSpan, isNotNull);
+        expect(textWidgets[0].textSpan, isA<TextSpan>());
+        expect(textWidgets[0].textSpan!.toPlainText(), '[[[foo]]]');
         expectTextSpanStyle(
-            textWidgets[0].text as TextSpan, null, FontWeight.normal);
+            textWidgets[0].textSpan! as TextSpan, null, FontWeight.normal);
 
-        expect(textWidgets[1].text, isNotNull);
-        expect(textWidgets[1].text, isA<TextSpan>());
-        expect(textWidgets[1].text.toPlainText(), '[[[foo]]]: /url');
+        expect(textWidgets[1].textSpan, isNotNull);
+        expect(textWidgets[1].textSpan, isA<TextSpan>());
+        expect(textWidgets[1].textSpan!.toPlainText(), '[[[foo]]]: /url');
         expectTextSpanStyle(
-            textWidgets[1].text as TextSpan, null, FontWeight.normal);
+            textWidgets[1].textSpan! as TextSpan, null, FontWeight.normal);
 
         expect(linkTapResults, isNull);
       },
@@ -2084,21 +2089,21 @@ void defineTests() {
           ),
         );
 
-        final List<RichText> textWidgets =
-            tester.widgetList(find.byType(RichText)).toList().cast<RichText>();
+        final List<Text> textWidgets =
+            tester.widgetList(find.byType(Text)).toList().cast<Text>();
         expect(textWidgets.length, 2);
 
-        expect(textWidgets[0].text, isNotNull);
-        expect(textWidgets[0].text, isA<TextSpan>());
-        expect(textWidgets[0].text.toPlainText(), '[]');
+        expect(textWidgets[0].textSpan, isNotNull);
+        expect(textWidgets[0].textSpan, isA<TextSpan>());
+        expect(textWidgets[0].textSpan!.toPlainText(), '[]');
         expectTextSpanStyle(
-            textWidgets[0].text as TextSpan, null, FontWeight.normal);
+            textWidgets[0].textSpan! as TextSpan, null, FontWeight.normal);
 
-        expect(textWidgets[1].text, isNotNull);
-        expect(textWidgets[1].text, isA<TextSpan>());
-        expect(textWidgets[1].text.toPlainText(), '[]: /uri');
+        expect(textWidgets[1].textSpan, isNotNull);
+        expect(textWidgets[1].textSpan, isA<TextSpan>());
+        expect(textWidgets[1].textSpan!.toPlainText(), '[]: /uri');
         expectTextSpanStyle(
-            textWidgets[1].text as TextSpan, null, FontWeight.normal);
+            textWidgets[1].textSpan! as TextSpan, null, FontWeight.normal);
 
         expect(linkTapResults, isNull);
       },
@@ -2120,21 +2125,21 @@ void defineTests() {
           ),
         );
 
-        final List<RichText> textWidgets =
-            tester.widgetList(find.byType(RichText)).toList().cast<RichText>();
+        final List<Text> textWidgets =
+            tester.widgetList(find.byType(Text)).toList().cast<Text>();
         expect(textWidgets.length, 2);
 
-        expect(textWidgets[0].text, isNotNull);
-        expect(textWidgets[0].text, isA<TextSpan>());
-        expect(textWidgets[0].text.toPlainText(), '[ ]');
+        expect(textWidgets[0].textSpan, isNotNull);
+        expect(textWidgets[0].textSpan, isA<TextSpan>());
+        expect(textWidgets[0].textSpan!.toPlainText(), '[ ]');
         expectTextSpanStyle(
-            textWidgets[0].text as TextSpan, null, FontWeight.normal);
+            textWidgets[0].textSpan! as TextSpan, null, FontWeight.normal);
 
-        expect(textWidgets[1].text, isNotNull);
-        expect(textWidgets[1].text, isA<TextSpan>());
-        expect(textWidgets[1].text.toPlainText(), '[ ]: /uri');
+        expect(textWidgets[1].textSpan, isNotNull);
+        expect(textWidgets[1].textSpan, isA<TextSpan>());
+        expect(textWidgets[1].textSpan!.toPlainText(), '[ ]: /uri');
         expectTextSpanStyle(
-            textWidgets[1].text as TextSpan, null, FontWeight.normal);
+            textWidgets[1].textSpan! as TextSpan, null, FontWeight.normal);
 
         expect(linkTapResults, isNull);
       },
@@ -2178,8 +2183,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
         expect(span.children, everyElement(isA<TextSpan>()));
 
@@ -2247,25 +2252,25 @@ void defineTests() {
           ),
         );
 
-        final List<RichText> textWidgets =
-            tester.widgetList(find.byType(RichText)).toList().cast<RichText>();
+        final List<Text> textWidgets =
+            tester.widgetList(find.byType(Text)).toList().cast<Text>();
         expect(textWidgets.length, 2);
 
-        expect(textWidgets[0].text, isNotNull);
-        expect(textWidgets[0].text, isA<TextSpan>());
-        expect(textWidgets[0].text.toPlainText(), 'foo');
+        expect(textWidgets[0].textSpan, isNotNull);
+        expect(textWidgets[0].textSpan, isA<TextSpan>());
+        expect(textWidgets[0].textSpan!.toPlainText(), 'foo');
 
-        expect(textWidgets[0].text, isNotNull);
-        expect(textWidgets[0].text, isA<TextSpan>());
-        expectLinkTextSpan(textWidgets[0].text as TextSpan, 'foo');
+        expect(textWidgets[0].textSpan, isNotNull);
+        expect(textWidgets[0].textSpan, isA<TextSpan>());
+        expectLinkTextSpan(textWidgets[0].textSpan! as TextSpan, 'foo');
         expectLinkTap(
             linkTapResults, const MarkdownLink('foo', '/url', 'title'));
 
-        expect(textWidgets[1].text, isNotNull);
-        expect(textWidgets[1].text, isA<TextSpan>());
-        expect(textWidgets[1].text.toPlainText(), '[]');
+        expect(textWidgets[1].textSpan, isNotNull);
+        expect(textWidgets[1].textSpan, isA<TextSpan>());
+        expect(textWidgets[1].textSpan!.toPlainText(), '[]');
         expectTextSpanStyle(
-            textWidgets[1].text as TextSpan, null, FontWeight.normal);
+            textWidgets[1].textSpan! as TextSpan, null, FontWeight.normal);
       },
     );
 
@@ -2307,8 +2312,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
         expect(span.children, everyElement(isA<TextSpan>()));
 
@@ -2354,8 +2359,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
         expect(span.children, everyElement(isA<TextSpan>()));
 
@@ -2401,8 +2406,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
 
         expect(span.children![0], isA<TextSpan>());
@@ -2453,8 +2458,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
 
         expectLinkTextSpan(span.children![0] as TextSpan, 'foo');
@@ -2505,8 +2510,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
         expect(span.children![0], isA<TextSpan>());
         expect(span.children![0].toPlainText(), '*');
@@ -2597,8 +2602,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
 
         expectLinkTextSpan(span.children![0] as TextSpan, 'foo');
@@ -2627,8 +2632,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
 
         expect(span.children![0], isA<TextSpan>());
@@ -2657,8 +2662,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
 
         expectLinkTextSpan(span.children![0] as TextSpan, 'foo');
@@ -2685,8 +2690,8 @@ void defineTests() {
           ),
         );
 
-        final RichText textWidget = tester.widget(find.byType(RichText));
-        final TextSpan span = textWidget.text as TextSpan;
+        final Text textWidget = tester.widget(find.byType(Text));
+        final TextSpan span = textWidget.textSpan! as TextSpan;
         expect(span.children!.length, 2);
         expect(span.children![0], isA<TextSpan>());
         expect(span.children![0].toPlainText(), '[foo]');

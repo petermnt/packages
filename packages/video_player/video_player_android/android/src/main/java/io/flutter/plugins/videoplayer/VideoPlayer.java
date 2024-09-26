@@ -83,7 +83,7 @@ final class VideoPlayer {
     DataSource.Factory dataSourceFactory =
         new DefaultDataSource.Factory(context, httpDataSourceFactory);
 
-    MediaSource mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint, context);
+    MediaSource mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint);
 
     exoPlayer.setMediaSource(mediaSource);
     exoPlayer.prepare();
@@ -124,7 +124,7 @@ final class VideoPlayer {
   }
 
   private MediaSource buildMediaSource(
-      Uri uri, DataSource.Factory mediaDataSourceFactory, String formatHint, Context context) {
+      Uri uri, DataSource.Factory mediaDataSourceFactory, String formatHint) {
     int type;
     if (formatHint == null) {
       type = Util.inferContentType(uri);
@@ -225,9 +225,13 @@ final class VideoPlayer {
           }
 
           @Override
-          public void onPlayerError(final PlaybackException error) {
+          public void onPlayerError(@NonNull final PlaybackException error) {
             setBuffering(false);
-            if (eventSink != null) {
+            if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
+              // See https://exoplayer.dev/live-streaming.html#behindlivewindowexception-and-error_code_behind_live_window
+              exoPlayer.seekToDefaultPosition();
+              exoPlayer.prepare();
+            } else if (eventSink != null) {
               eventSink.error("VideoError", "Video player had error " + error, null);
             }
           }

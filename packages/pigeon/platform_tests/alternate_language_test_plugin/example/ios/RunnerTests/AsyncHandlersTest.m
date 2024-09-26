@@ -10,7 +10,7 @@
 #import "MockBinaryMessenger.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-@interface MockHostSmallApi : NSObject <HostSmallApi>
+@interface MockHostSmallApi : NSObject <FLTHostSmallApi>
 @property(nonatomic, copy) NSString *output;
 @property(nonatomic, retain) FlutterError *voidVoidError;
 @end
@@ -42,11 +42,11 @@
 
 - (void)testAsyncHost2Flutter {
   MockBinaryMessenger *binaryMessenger =
-      [[MockBinaryMessenger alloc] initWithCodec:FlutterIntegrationCoreApiGetCodec()];
+      [[MockBinaryMessenger alloc] initWithCodec:FLTFlutterIntegrationCoreApiGetCodec()];
   NSString *value = @"Test";
   binaryMessenger.result = value;
-  FlutterIntegrationCoreApi *flutterApi =
-      [[FlutterIntegrationCoreApi alloc] initWithBinaryMessenger:binaryMessenger];
+  FLTFlutterIntegrationCoreApi *flutterApi =
+      [[FLTFlutterIntegrationCoreApi alloc] initWithBinaryMessenger:binaryMessenger];
   XCTestExpectation *expectation = [self expectationWithDescription:@"echo callback"];
   [flutterApi echoAsyncString:value
                    completion:^(NSString *_Nonnull output, FlutterError *_Nullable error) {
@@ -58,10 +58,10 @@
 
 - (void)testAsyncFlutter2HostVoidVoid {
   MockBinaryMessenger *binaryMessenger =
-      [[MockBinaryMessenger alloc] initWithCodec:HostSmallApiGetCodec()];
+      [[MockBinaryMessenger alloc] initWithCodec:FLTHostSmallApiGetCodec()];
   MockHostSmallApi *mockHostSmallApi = [[MockHostSmallApi alloc] init];
-  HostSmallApiSetup(binaryMessenger, mockHostSmallApi);
-  NSString *channelName = @"dev.flutter.pigeon.HostSmallApi.voidVoid";
+  SetUpFLTHostSmallApi(binaryMessenger, mockHostSmallApi);
+  NSString *channelName = @"dev.flutter.pigeon.pigeon_integration_tests.HostSmallApi.voidVoid";
   XCTAssertNotNil(binaryMessenger.handlers[channelName]);
 
   XCTestExpectation *expectation = [self expectationWithDescription:@"voidvoid callback"];
@@ -75,13 +75,13 @@
 
 - (void)testAsyncFlutter2HostVoidVoidError {
   MockBinaryMessenger *binaryMessenger =
-      [[MockBinaryMessenger alloc] initWithCodec:HostSmallApiGetCodec()];
+      [[MockBinaryMessenger alloc] initWithCodec:FLTHostSmallApiGetCodec()];
   MockHostSmallApi *mockHostSmallApi = [[MockHostSmallApi alloc] init];
   mockHostSmallApi.voidVoidError = [FlutterError errorWithCode:@"code"
                                                        message:@"message"
                                                        details:nil];
-  HostSmallApiSetup(binaryMessenger, mockHostSmallApi);
-  NSString *channelName = @"dev.flutter.pigeon.HostSmallApi.voidVoid";
+  SetUpFLTHostSmallApi(binaryMessenger, mockHostSmallApi);
+  NSString *channelName = @"dev.flutter.pigeon.pigeon_integration_tests.HostSmallApi.voidVoid";
   XCTAssertNotNil(binaryMessenger.handlers[channelName]);
 
   XCTestExpectation *expectation = [self expectationWithDescription:@"voidvoid callback"];
@@ -96,12 +96,12 @@
 
 - (void)testAsyncFlutter2Host {
   MockBinaryMessenger *binaryMessenger =
-      [[MockBinaryMessenger alloc] initWithCodec:HostSmallApiGetCodec()];
+      [[MockBinaryMessenger alloc] initWithCodec:FLTHostSmallApiGetCodec()];
   MockHostSmallApi *mockHostSmallApi = [[MockHostSmallApi alloc] init];
   NSString *value = @"Test";
   mockHostSmallApi.output = value;
-  HostSmallApiSetup(binaryMessenger, mockHostSmallApi);
-  NSString *channelName = @"dev.flutter.pigeon.HostSmallApi.echo";
+  SetUpFLTHostSmallApi(binaryMessenger, mockHostSmallApi);
+  NSString *channelName = @"dev.flutter.pigeon.pigeon_integration_tests.HostSmallApi.echo";
   XCTAssertNotNil(binaryMessenger.handlers[channelName]);
 
   NSData *inputEncoded = [binaryMessenger.codec encode:@[ value ]];
@@ -117,10 +117,10 @@
 
 - (void)testAsyncFlutter2HostError {
   MockBinaryMessenger *binaryMessenger =
-      [[MockBinaryMessenger alloc] initWithCodec:HostSmallApiGetCodec()];
+      [[MockBinaryMessenger alloc] initWithCodec:FLTHostSmallApiGetCodec()];
   MockHostSmallApi *mockHostSmallApi = [[MockHostSmallApi alloc] init];
-  HostSmallApiSetup(binaryMessenger, mockHostSmallApi);
-  NSString *channelName = @"dev.flutter.pigeon.HostSmallApi.echo";
+  SetUpFLTHostSmallApi(binaryMessenger, mockHostSmallApi);
+  NSString *channelName = @"dev.flutter.pigeon.pigeon_integration_tests.HostSmallApi.echo";
   XCTAssertNotNil(binaryMessenger.handlers[channelName]);
 
   NSData *inputEncoded = [binaryMessenger.codec encode:@[ @"Test" ]];

@@ -145,6 +145,12 @@ void main() {
     expect(opts.astOut, equals('stdout'));
   });
 
+  test('parse args - base_path', () {
+    final PigeonOptions opts =
+        Pigeon.parseArgs(<String>['--base_path', './foo/']);
+    expect(opts.basePath, equals('./foo/'));
+  });
+
   test('simple parse api', () {
     const String code = '''
 class Input1 {
@@ -168,18 +174,18 @@ abstract class Api1 {
     expect(root.apis[0].name, equals('Api1'));
     expect(root.apis[0].methods.length, equals(1));
     expect(root.apis[0].methods[0].name, equals('doit'));
-    expect(root.apis[0].methods[0].arguments[0].name, equals('input'));
+    expect(root.apis[0].methods[0].parameters[0].name, equals('input'));
     expect(
-        root.apis[0].methods[0].arguments[0].type.baseName, equals('Input1'));
+        root.apis[0].methods[0].parameters[0].type.baseName, equals('Input1'));
     expect(root.apis[0].methods[0].returnType.baseName, equals('Output1'));
 
     Class? input;
     Class? output;
-    for (final Class klass in root.classes) {
-      if (klass.name == 'Input1') {
-        input = klass;
-      } else if (klass.name == 'Output1') {
-        output = klass;
+    for (final Class classDefinition in root.classes) {
+      if (classDefinition.name == 'Input1') {
+        input = classDefinition;
+      } else if (classDefinition.name == 'Output1') {
+        output = classDefinition;
       }
     }
     expect(input, isNotNull);
@@ -307,7 +313,7 @@ abstract class AFlutterApi {
     expect(results.errors.length, equals(0));
     expect(results.root.apis.length, equals(1));
     expect(results.root.apis[0].name, equals('AFlutterApi'));
-    expect(results.root.apis[0].location, equals(ApiLocation.flutter));
+    expect(results.root.apis[0], isA<AstFlutterApi>());
   });
 
   test('void host api', () {
@@ -347,7 +353,7 @@ abstract class VoidArgApi {
     expect(results.root.apis[0].name, equals('VoidArgApi'));
     expect(
         results.root.apis[0].methods[0].returnType.baseName, equals('Output1'));
-    expect(results.root.apis[0].methods[0].arguments.isEmpty, isTrue);
+    expect(results.root.apis[0].methods[0].parameters.isEmpty, isTrue);
   });
 
   test('mockDartClass', () {
@@ -364,8 +370,10 @@ abstract class ApiWithMockDartClass {
     final ParseResults results = parseSource(code);
     expect(results.errors.length, equals(0));
     expect(results.root.apis.length, equals(1));
-    expect(results.root.apis[0].dartHostTestHandler,
-        equals('ApiWithMockDartClassMock'));
+    expect(
+      (results.root.apis[0] as AstHostApi).dartHostTestHandler,
+      equals('ApiWithMockDartClassMock'),
+    );
   });
 
   test('only visible from nesting', () {
@@ -399,7 +407,7 @@ abstract class NestorApi {
     expect(results.copyrightHeader, 'foobar.txt');
   });
 
-  test('Dart generater copyright flag', () {
+  test('Dart generator copyright flag', () {
     final Root root = Root(apis: <Api>[], classes: <Class>[], enums: <Enum>[]);
     const PigeonOptions options =
         PigeonOptions(copyrightHeader: './copyright_header.txt');
@@ -409,7 +417,7 @@ abstract class NestorApi {
     expect(buffer.toString(), startsWith('// Copyright 2013'));
   });
 
-  test('Java generater copyright flag', () {
+  test('Java generator copyright flag', () {
     final Root root = Root(apis: <Api>[], classes: <Class>[], enums: <Enum>[]);
     const PigeonOptions options = PigeonOptions(
         javaOut: 'Foo.java', copyrightHeader: './copyright_header.txt');
@@ -419,7 +427,7 @@ abstract class NestorApi {
     expect(buffer.toString(), startsWith('// Copyright 2013'));
   });
 
-  test('Objc header generater copyright flag', () {
+  test('Objc header generator copyright flag', () {
     final Root root = Root(apis: <Api>[], classes: <Class>[], enums: <Enum>[]);
     const PigeonOptions options =
         PigeonOptions(copyrightHeader: './copyright_header.txt');
@@ -430,7 +438,7 @@ abstract class NestorApi {
     expect(buffer.toString(), startsWith('// Copyright 2013'));
   });
 
-  test('Objc source generater copyright flag', () {
+  test('Objc source generator copyright flag', () {
     final Root root = Root(apis: <Api>[], classes: <Class>[], enums: <Enum>[]);
     const PigeonOptions options =
         PigeonOptions(copyrightHeader: './copyright_header.txt');
@@ -441,7 +449,7 @@ abstract class NestorApi {
     expect(buffer.toString(), startsWith('// Copyright 2013'));
   });
 
-  test('Swift generater copyright flag', () {
+  test('Swift generator copyright flag', () {
     final Root root = Root(apis: <Api>[], classes: <Class>[], enums: <Enum>[]);
     const PigeonOptions options = PigeonOptions(
         swiftOut: 'Foo.swift', copyrightHeader: './copyright_header.txt');
@@ -451,7 +459,7 @@ abstract class NestorApi {
     expect(buffer.toString(), startsWith('// Copyright 2013'));
   });
 
-  test('C++ header generater copyright flag', () {
+  test('C++ header generator copyright flag', () {
     final Root root = Root(apis: <Api>[], classes: <Class>[], enums: <Enum>[]);
     const PigeonOptions options = PigeonOptions(
         cppHeaderOut: 'Foo.h', copyrightHeader: './copyright_header.txt');
@@ -461,7 +469,7 @@ abstract class NestorApi {
     expect(buffer.toString(), startsWith('// Copyright 2013'));
   });
 
-  test('C++ source generater copyright flag', () {
+  test('C++ source generator copyright flag', () {
     final Root root = Root(apis: <Api>[], classes: <Class>[], enums: <Enum>[]);
     const PigeonOptions options =
         PigeonOptions(copyrightHeader: './copyright_header.txt');
@@ -737,7 +745,7 @@ abstract class Api {
     final ParseResults parseResult = parseSource(code);
     expect(parseResult.errors.length, equals(1));
     expect(parseResult.errors[0].message,
-        contains('Generic type arguments must be nullable'));
+        contains('Generic type parameters must be nullable'));
     expect(parseResult.errors[0].message, contains('"list"'));
     expect(parseResult.errors[0].lineNumber, 2);
   });
@@ -759,7 +767,6 @@ abstract class Api {
   });
 
   test('enums argument flutter', () {
-    // TODO(gaaclarke): Make this not an error: https://github.com/flutter/flutter/issues/87307
     const String code = '''
 
 enum Foo {
@@ -773,12 +780,10 @@ abstract class Api {
 }
 ''';
     final ParseResults parseResult = parseSource(code);
-    expect(parseResult.errors.length, equals(1));
-    expect(parseResult.errors[0].message, contains('Enums'));
+    expect(parseResult.errors.length, equals(0));
   });
 
   test('enums list argument', () {
-    // TODO(tarrinneal): Make this not an error: https://github.com/flutter/flutter/issues/87307
     const String code = '''
 enum Foo { one, two }
 
@@ -788,12 +793,10 @@ abstract class Api {
 }
 ''';
     final ParseResults parseResult = parseSource(code);
-    expect(parseResult.errors.length, equals(1));
-    expect(parseResult.errors[0].message, contains('Enums'));
+    expect(parseResult.errors.length, equals(0));
   });
 
   test('enums map argument key', () {
-    // TODO(tarrinneal): Make this not an error: https://github.com/flutter/flutter/issues/87307
     const String code = '''
 enum Foo { one, two }
 
@@ -803,12 +806,10 @@ abstract class Api {
 }
 ''';
     final ParseResults parseResult = parseSource(code);
-    expect(parseResult.errors.length, equals(1));
-    expect(parseResult.errors[0].message, contains('Enums'));
+    expect(parseResult.errors.length, equals(0));
   });
 
   test('enums map argument value', () {
-    // TODO(tarrinneal): Make this not an error: https://github.com/flutter/flutter/issues/87307
     const String code = '''
 enum Foo { one, two }
 
@@ -818,12 +819,10 @@ abstract class Api {
 }
 ''';
     final ParseResults parseResult = parseSource(code);
-    expect(parseResult.errors.length, equals(1));
-    expect(parseResult.errors[0].message, contains('Enums'));
+    expect(parseResult.errors.length, equals(0));
   });
 
   test('enums return value', () {
-    // TODO(gaaclarke): Make this not an error: https://github.com/flutter/flutter/issues/87307
     const String code = '''
 
 enum Foo {
@@ -837,8 +836,7 @@ abstract class Api {
 }
 ''';
     final ParseResults parseResult = parseSource(code);
-    expect(parseResult.errors.length, equals(1));
-    expect(parseResult.errors[0].message, contains('Enums'));
+    expect(parseResult.errors.length, equals(0));
   });
 
   test('return type generics', () {
@@ -868,14 +866,14 @@ abstract class Api {
 }
 ''';
     final ParseResults parseResult = parseSource(code);
+    expect(parseResult.root.apis[0].methods[0].parameters[1].type.baseName,
+        'List');
     expect(
-        parseResult.root.apis[0].methods[0].arguments[1].type.baseName, 'List');
-    expect(
-        parseResult.root.apis[0].methods[0].arguments[1].type.typeArguments[0]
+        parseResult.root.apis[0].methods[0].parameters[1].type.typeArguments[0]
             .baseName,
         'double');
     expect(
-        parseResult.root.apis[0].methods[0].arguments[1].type.typeArguments[0]
+        parseResult.root.apis[0].methods[0].parameters[1].type.typeArguments[0]
             .isNullable,
         isTrue);
   });
@@ -898,7 +896,7 @@ abstract class Api {
     expect(field.type.typeArguments[1].baseName, 'int');
   });
 
-  test('two arguments', () {
+  test('two parameters', () {
     const String code = '''
 class Input {
   String? input;
@@ -913,7 +911,7 @@ abstract class Api {
     expect(results.root.apis.length, 1);
     expect(results.root.apis[0].methods.length, equals(1));
     expect(results.root.apis[0].methods[0].name, equals('method'));
-    expect(results.root.apis[0].methods[0].arguments.length, 2);
+    expect(results.root.apis[0].methods[0].parameters.length, 2);
   });
 
   test('no type name argument', () {
@@ -927,7 +925,7 @@ abstract class Api {
     expect(results.errors.length, 1);
     expect(results.errors[0].lineNumber, 3);
     expect(results.errors[0].message,
-        contains('Arguments must specify their type'));
+        contains('Parameters must specify their type'));
   });
 
   test('custom objc selector', () {
@@ -958,10 +956,10 @@ abstract class Api {
     expect(results.errors.length, 1);
     expect(results.errors[0].lineNumber, 3);
     expect(results.errors[0].message,
-        contains('Invalid selector, expected 2 arguments'));
+        contains('Invalid selector, expected 2 parameters'));
   });
 
-  test('custom objc no arguments', () {
+  test('custom objc no parameters', () {
     const String code = '''
 @HostApi()
 abstract class Api {
@@ -1004,10 +1002,10 @@ abstract class Api {
     expect(results.errors.length, 1);
     expect(results.errors[0].lineNumber, 3);
     expect(results.errors[0].message,
-        contains('Invalid function signature, expected 2 arguments'));
+        contains('Invalid function signature, expected 2 parameters'));
   });
 
-  test('custom swift function signature no arguments', () {
+  test('custom swift function signature no parameters', () {
     const String code = '''
 @HostApi()
 abstract class Api {
@@ -1070,7 +1068,7 @@ abstract class Api {
     expect(results.root.classes[0].name, 'Foo');
   });
 
-  test('recurse into type arguments', () {
+  test('recurse into type parameters', () {
     const String code = '''
 class Foo {
   int? foo;
@@ -1238,7 +1236,7 @@ abstract class Api {
     final ParseResults results = parseSource(code);
     expect(results.errors.length, 0);
     expect(
-        results.root.apis[0].methods[0].arguments[0].type.isNullable, isTrue);
+        results.root.apis[0].methods[0].parameters[0].type.isNullable, isTrue);
   });
 
   test('task queue specified', () {
@@ -1327,5 +1325,244 @@ abstract class Api {
       completer.complete();
     });
     await completer.future;
+  });
+
+  test('unsupported non-positional parameters on FlutterApi', () {
+    const String code = '''
+@FlutterApi()
+abstract class Api {
+  int? calc({int? anInt});
+}
+''';
+
+    final ParseResults results = parseSource(code);
+    expect(results.errors.length, 1);
+    expect(results.errors[0].message,
+        contains('FlutterApi method parameters must be positional'));
+  });
+
+  test('unsupported optional parameters on FlutterApi', () {
+    const String code = '''
+@FlutterApi()
+abstract class Api {
+  int? calc([int? anInt]);
+}
+''';
+
+    final ParseResults results = parseSource(code);
+    expect(results.errors.length, 1);
+    expect(results.errors[0].message,
+        contains('FlutterApi method parameters must not be optional'));
+  });
+
+  test('simple parse ProxyApi', () {
+    const String code = '''
+@ProxyApi()
+abstract class MyClass {
+  MyClass();
+  late String aField;
+  late void Function() aCallbackMethod;
+  void aMethod();
+}
+''';
+    final ParseResults parseResult = parseSource(code);
+    expect(parseResult.errors.length, equals(0));
+    final Root root = parseResult.root;
+    expect(root.apis.length, equals(1));
+
+    final AstProxyApi proxyApi = root.apis.single as AstProxyApi;
+    expect(proxyApi.name, equals('MyClass'));
+    expect(proxyApi.constructors.single.name, equals(''));
+    expect(proxyApi.methods.length, equals(2));
+
+    for (final Method method in proxyApi.methods) {
+      if (method.location == ApiLocation.host) {
+        expect(method.name, equals('aMethod'));
+      } else if (method.location == ApiLocation.flutter) {
+        expect(method.name, equals('aCallbackMethod'));
+      }
+    }
+  });
+
+  group('ProxyApi validation', () {
+    test('error with using data class', () {
+      const String code = '''
+class DataClass {
+  late int input;
+}
+
+@ProxyApi()
+abstract class MyClass {
+  MyClass(DataClass input);
+}
+''';
+      final ParseResults parseResult = parseSource(code);
+      expect(parseResult.errors.length, equals(1));
+      expect(
+        parseResult.errors.single.message,
+        contains('ProxyApis do not support data classes'),
+      );
+    });
+
+    test('super class must be proxy api', () {
+      const String code = '''
+class DataClass {
+  late int input;
+}
+
+@ProxyApi()
+abstract class MyClass extends DataClass {
+  void aMethod();
+}
+''';
+      final ParseResults parseResult = parseSource(code);
+      expect(parseResult.errors, isNotEmpty);
+      expect(
+        parseResult.errors[0].message,
+        contains('Super class of MyClass is not marked as a @ProxyApi'),
+      );
+    });
+
+    test('interface must be proxy api', () {
+      const String code = '''
+class DataClass {
+  late int input;
+}
+
+@ProxyApi()
+abstract class MyClass implements DataClass {
+  void aMethod();
+}
+''';
+      final ParseResults parseResult = parseSource(code);
+      expect(parseResult.errors, isNotEmpty);
+      expect(
+        parseResult.errors[0].message,
+        contains('Interface of MyClass is not marked as a @ProxyApi'),
+      );
+    });
+
+    test('unattached fields can not be inherited', () {
+      const String code = '''
+@ProxyApi()
+abstract class MyClass extends MyOtherClass { }
+
+@ProxyApi()
+abstract class MyOtherClass {
+  late int aField;
+}
+''';
+      final ParseResults parseResult = parseSource(code);
+      expect(parseResult.errors, isNotEmpty);
+      expect(
+        parseResult.errors[0].message,
+        contains(
+          'Unattached fields can not be inherited. Unattached field found for parent class: aField',
+        ),
+      );
+    });
+
+    test(
+        'api is not used as an attached field while having an unattached field',
+        () {
+      const String code = '''
+@ProxyApi()
+abstract class MyClass {
+  @attached
+  late MyOtherClass anAttachedField;
+}
+
+@ProxyApi()
+abstract class MyOtherClass {
+  late int aField;
+}
+''';
+      final ParseResults parseResult = parseSource(code);
+      expect(parseResult.errors, isNotEmpty);
+      expect(
+        parseResult.errors[0].message,
+        contains(
+          'ProxyApis with unattached fields can not be used as attached fields: anAttachedField',
+        ),
+      );
+    });
+
+    test(
+        'api is not used as an attached field while having a required Flutter method',
+        () {
+      const String code = '''
+@ProxyApi()
+abstract class MyClass {
+  @attached
+  late MyOtherClass anAttachedField;
+}
+
+@ProxyApi()
+abstract class MyOtherClass {
+  late void Function() aCallbackMethod;
+}
+''';
+      final ParseResults parseResult = parseSource(code);
+      expect(parseResult.errors, isNotEmpty);
+      expect(
+        parseResult.errors[0].message,
+        contains(
+          'ProxyApis with required callback methods can not be used as attached fields: anAttachedField',
+        ),
+      );
+    });
+
+    test('interfaces can only have callback methods', () {
+      const String code = '''
+@ProxyApi()
+abstract class MyClass implements MyOtherClass {
+}
+
+@ProxyApi()
+abstract class MyOtherClass {
+  MyOtherClass();
+}
+''';
+      final ParseResults parseResult = parseSource(code);
+      expect(parseResult.errors, isNotEmpty);
+      expect(
+        parseResult.errors[0].message,
+        contains(
+          'ProxyApis used as interfaces can only have callback methods: `MyClass` implements `MyOtherClass`',
+        ),
+      );
+    });
+
+    test('attached fields must be a ProxyApi', () {
+      const String code = '''
+@ProxyApi()
+abstract class MyClass {
+  @attached
+  late int aField;
+}
+''';
+      final ParseResults parseResult = parseSource(code);
+      expect(parseResult.errors, isNotEmpty);
+      expect(
+        parseResult.errors[0].message,
+        contains('Attached fields must be a ProxyApi: int'),
+      );
+    });
+
+    test('attached fields must not be nullable', () {
+      const String code = '''
+@ProxyApi()
+abstract class MyClass {
+  @attached
+  late MyClass? aField;
+}
+''';
+      final ParseResults parseResult = parseSource(code);
+      expect(parseResult.errors, isNotEmpty);
+      expect(
+        parseResult.errors[0].message,
+        contains('Attached fields must not be nullable: MyClass?'),
+      );
+    });
   });
 }

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-part of google_maps_flutter_web;
+part of '../google_maps_flutter_web.dart';
 
 /// This class manages a set of [MarkerController]s associated to a [GoogleMapController].
 class MarkersController extends GeometryController {
@@ -30,10 +30,6 @@ class MarkersController extends GeometryController {
   }
 
   void _addMarker(Marker marker) {
-    if (marker == null) {
-      return;
-    }
-
     final gmaps.InfoWindowOptions? infoWindowOptions =
         _infoWindowOptionsFromMarker(marker);
     gmaps.InfoWindow? gmInfoWindow;
@@ -43,11 +39,12 @@ class MarkersController extends GeometryController {
       // Google Maps' JS SDK does not have a click event on the InfoWindow, so
       // we make one...
       if (infoWindowOptions.content != null &&
-          infoWindowOptions.content is HtmlElement) {
-        final HtmlElement content = infoWindowOptions.content! as HtmlElement;
-        content.onClick.listen((_) {
+          infoWindowOptions.content is HTMLElement) {
+        final HTMLElement content = infoWindowOptions.content! as HTMLElement;
+
+        content.onclick = (JSAny? _) {
           _onInfoWindowTap(marker.markerId);
-        });
+        }.toJS;
       }
     }
 
@@ -95,7 +92,7 @@ class MarkersController extends GeometryController {
           _infoWindowOptionsFromMarker(marker);
       markerController.update(
         markerOptions,
-        newInfoWindowContent: infoWindow?.content as HtmlElement?,
+        newInfoWindowContent: infoWindow?.content as HTMLElement?,
       );
     }
   }

@@ -7,8 +7,11 @@ import 'package:flutter/widgets.dart' as widgets;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:in_app_purchase_android/src/billing_client_wrappers/billing_config_wrapper.dart';
 import 'package:in_app_purchase_android/src/channel.dart';
+import 'package:in_app_purchase_android/src/types/translator.dart';
 
+import 'billing_client_wrappers/billing_client_wrapper_test.dart';
 import 'billing_client_wrappers/purchase_wrapper_test.dart';
 import 'stub_in_app_purchase_platform.dart';
 
@@ -20,10 +23,12 @@ void main() {
   const String startConnectionCall =
       'BillingClient#startConnection(BillingClientStateListener)';
   const String endConnectionCall = 'BillingClient#endConnection()';
+  const String onBillingServiceDisconnectedCallback =
+      'BillingClientStateListener#onBillingServiceDisconnected()';
+  late BillingClientManager manager;
 
   setUpAll(() {
-    _ambiguate(TestDefaultBinaryMessengerBinding.instance)!
-        .defaultBinaryMessenger
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, stubPlatform.fakeMethodCallHandler);
   });
 
@@ -38,13 +43,13 @@ void main() {
         name: startConnectionCall,
         value: buildBillingResultMap(expectedBillingResult));
     stubPlatform.addResponse(name: endConnectionCall);
-    iapAndroidPlatformAddition =
-        InAppPurchaseAndroidPlatformAddition(BillingClientManager());
+    manager = BillingClientManager();
+    iapAndroidPlatformAddition = InAppPurchaseAndroidPlatformAddition(manager);
   });
 
   group('consume purchases', () {
     const String consumeMethodName =
-        'BillingClient#consumeAsync(String, ConsumeResponseListener)';
+        'BillingClient#consumeAsync(ConsumeParams, ConsumeResponseListener)';
     test('consume purchase async success', () async {
       const BillingResponse expectedCode = BillingResponse.ok;
       const String debugMessage = 'dummy message';
@@ -56,15 +61,119 @@ void main() {
       );
       final BillingResultWrapper billingResultWrapper =
           await iapAndroidPlatformAddition.consumePurchase(
-              GooglePlayPurchaseDetails.fromPurchase(dummyPurchase));
+              GooglePlayPurchaseDetails.fromPurchase(dummyPurchase).first);
 
       expect(billingResultWrapper, equals(expectedBillingResult));
     });
   });
 
+  group('billingConfig', () {
+    test('getCountryCode success', () async {
+      const String expectedCountryCode = 'US';
+      const BillingConfigWrapper expected = BillingConfigWrapper(
+          countryCode: expectedCountryCode,
+          responseCode: BillingResponse.ok,
+          debugMessage: 'dummy message');
+
+      stubPlatform.addResponse(
+        name: BillingClient.getBillingConfigMethodString,
+        value: buildBillingConfigMap(expected),
+      );
+      final String countryCode =
+          await iapAndroidPlatformAddition.getCountryCode();
+
+      expect(countryCode, equals(expectedCountryCode));
+    });
+  });
+
+  group('setBillingChoice', () {
+    late Map<Object?, Object?> arguments;
+    test('setAlternativeBillingOnlyState', () async {
+      stubPlatform.reset();
+      stubPlatform.addResponse(
+        name: startConnectionCall,
+        additionalStepBeforeReturn: (dynamic value) =>
+            arguments = value as Map<dynamic, dynamic>,
+      );
+      stubPlatform.addResponse(name: endConnectionCall);
+      await iapAndroidPlatformAddition
+          .setBillingChoice(BillingChoiceMode.alternativeBillingOnly);
+
+      // Fake the disconnect that we would expect from a endConnectionCall.
+      await manager.client.callHandler(
+        const MethodCall(onBillingServiceDisconnectedCallback,
+            <String, dynamic>{'handle': 0}),
+      );
+      // Verify that after connection ended reconnect was called.
+      expect(stubPlatform.countPreviousCalls(startConnectionCall), equals(2));
+      expect(
+          arguments['billingChoiceMode'],
+          const BillingChoiceModeConverter()
+              .toJson(BillingChoiceMode.alternativeBillingOnly));
+    });
+
+    test('setPlayBillingState', () async {
+      stubPlatform.reset();
+      stubPlatform.addResponse(
+        name: startConnectionCall,
+        additionalStepBeforeReturn: (dynamic value) =>
+            arguments = value as Map<dynamic, dynamic>,
+      );
+      stubPlatform.addResponse(name: endConnectionCall);
+      await iapAndroidPlatformAddition
+          .setBillingChoice(BillingChoiceMode.playBillingOnly);
+
+      // Fake the disconnect that we would expect from a endConnectionCall.
+      await manager.client.callHandler(
+        const MethodCall(onBillingServiceDisconnectedCallback,
+            <String, dynamic>{'handle': 0}),
+      );
+      // Verify that after connection ended reconnect was called.
+      expect(stubPlatform.countPreviousCalls(startConnectionCall), equals(2));
+      expect(
+          arguments['billingChoiceMode'],
+          const BillingChoiceModeConverter()
+              .toJson(BillingChoiceMode.playBillingOnly));
+    });
+  });
+
+  group('isAlternativeBillingOnlyAvailable', () {
+    test('isAlternativeBillingOnlyAvailable success', () async {
+      const BillingResultWrapper expected = BillingResultWrapper(
+          responseCode: BillingResponse.ok, debugMessage: 'dummy message');
+
+      stubPlatform.addResponse(
+        name: BillingClient.isAlternativeBillingOnlyAvailableMethodString,
+        value: buildBillingResultMap(expected),
+      );
+      final BillingResultWrapper result =
+          await iapAndroidPlatformAddition.isAlternativeBillingOnlyAvailable();
+
+      expect(result, equals(expected));
+    });
+  });
+
+  group('showAlternativeBillingOnlyInformationDialog', () {
+    test('showAlternativeBillingOnlyInformationDialog success', () async {
+      const BillingResultWrapper expected = BillingResultWrapper(
+          responseCode: BillingResponse.ok, debugMessage: 'dummy message');
+
+      stubPlatform.addResponse(
+        name: BillingClient
+            .showAlternativeBillingOnlyInformationDialogMethodString,
+        value: buildBillingResultMap(expected),
+      );
+      final BillingResultWrapper result =
+          await iapAndroidPlatformAddition.isAlternativeBillingOnlyAvailable();
+
+      expect(result, equals(expected));
+    });
+  });
+
   group('queryPastPurchase', () {
     group('queryPurchaseDetails', () {
-      const String queryMethodName = 'BillingClient#queryPurchases(String)';
+      const String queryMethodName =
+          'BillingClient#queryPurchasesAsync(QueryPurchaseParams, PurchaseResponseListener)';
       test('handles error', () async {
         const String debugMessage = 'dummy message';
         const BillingResponse responseCode = BillingResponse.developerError;
@@ -86,7 +195,7 @@ void main() {
         expect(response.error!.source, kIAPSource);
       });
 
-      test('returns SkuDetailsResponseWrapper', () async {
+      test('returns ProductDetailsResponseWrapper', () async {
         const String debugMessage = 'dummy message';
         const BillingResponse responseCode = BillingResponse.ok;
         const BillingResultWrapper expectedBillingResult = BillingResultWrapper(
@@ -101,7 +210,7 @@ void main() {
           ]
         });
 
-        // Since queryPastPurchases makes 2 platform method calls (one for each SkuType), the result will contain 2 dummyWrapper instead
+        // Since queryPastPurchases makes 2 platform method calls (one for each ProductType), the result will contain 2 dummyWrapper instead
         // of 1.
         final QueryPurchaseDetailsResponse response =
             await iapAndroidPlatformAddition.queryPastPurchases();
@@ -174,50 +283,27 @@ void main() {
     });
   });
 
-  group('launchPriceChangeConfirmationFlow', () {
-    const String launchPriceChangeConfirmationFlowMethodName =
-        'BillingClient#launchPriceChangeConfirmationFlow (Activity, PriceChangeFlowParams, PriceChangeConfirmationListener)';
-    const String dummySku = 'sku';
-
-    const BillingResultWrapper expectedBillingResultPriceChangeConfirmation =
-        BillingResultWrapper(
-      responseCode: BillingResponse.ok,
-      debugMessage: 'dummy message',
-    );
-
-    test('serializes and deserializes data', () async {
-      stubPlatform.addResponse(
-        name: launchPriceChangeConfirmationFlowMethodName,
-        value:
-            buildBillingResultMap(expectedBillingResultPriceChangeConfirmation),
+  group('userChoiceDetails', () {
+    test('called', () async {
+      final Future<GooglePlayUserChoiceDetails> futureDetails =
+          iapAndroidPlatformAddition.userChoiceDetailsStream.first;
+      const UserChoiceDetailsWrapper expected = UserChoiceDetailsWrapper(
+        originalExternalTransactionId: 'TransactionId',
+        externalTransactionToken: 'TransactionToken',
+        products: <UserChoiceDetailsProductWrapper>[
+          UserChoiceDetailsProductWrapper(
+              id: 'id1',
+              offerToken: 'offerToken1',
+              productType: ProductType.inapp),
+          UserChoiceDetailsProductWrapper(
+              id: 'id2',
+              offerToken: 'offerToken2',
+              productType: ProductType.inapp),
+        ],
       );
-
+      manager.onUserChoiceAlternativeBilling(expected);
       expect(
-        await iapAndroidPlatformAddition.launchPriceChangeConfirmationFlow(
-          sku: dummySku,
-        ),
-        equals(expectedBillingResultPriceChangeConfirmation),
-      );
-    });
-
-    test('passes sku to launchPriceChangeConfirmationFlow', () async {
-      stubPlatform.addResponse(
-        name: launchPriceChangeConfirmationFlowMethodName,
-        value:
-            buildBillingResultMap(expectedBillingResultPriceChangeConfirmation),
-      );
-      await iapAndroidPlatformAddition.launchPriceChangeConfirmationFlow(
-        sku: dummySku,
-      );
-      final MethodCall call = stubPlatform
-          .previousCallMatching(launchPriceChangeConfirmationFlowMethodName);
-      expect(call.arguments, equals(<dynamic, dynamic>{'sku': dummySku}));
+          await futureDetails, Translator.convertToUserChoiceDetails(expected));
     });
   });
 }
-
-/// This allows a value of type T or T? to be treated as a value of type T?.
-///
-/// We use this so that APIs that have become non-nullable can still be used
-/// with `!` and `?` on the stable branch.
-T? _ambiguate<T>(T? value) => value;

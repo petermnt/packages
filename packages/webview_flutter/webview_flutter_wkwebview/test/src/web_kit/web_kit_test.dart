@@ -346,7 +346,8 @@ void main() {
           instanceManager: instanceManager,
         );
 
-        userContentController.addScriptMessageHandler(handler, 'handlerName');
+        await userContentController.addScriptMessageHandler(
+            handler, 'handlerName');
         verify(mockPlatformHostApi.addScriptMessageHandler(
           instanceManager.getIdentifier(userContentController),
           instanceManager.getIdentifier(handler),
@@ -355,7 +356,7 @@ void main() {
       });
 
       test('removeScriptMessageHandler', () async {
-        userContentController.removeScriptMessageHandler('handlerName');
+        await userContentController.removeScriptMessageHandler('handlerName');
         verify(mockPlatformHostApi.removeScriptMessageHandler(
           instanceManager.getIdentifier(userContentController),
           'handlerName',
@@ -363,7 +364,7 @@ void main() {
       });
 
       test('removeAllScriptMessageHandlers', () async {
-        userContentController.removeAllScriptMessageHandlers();
+        await userContentController.removeAllScriptMessageHandlers();
         verify(mockPlatformHostApi.removeAllScriptMessageHandlers(
           instanceManager.getIdentifier(userContentController),
         ));
@@ -436,6 +437,14 @@ void main() {
       test('allowsInlineMediaPlayback', () {
         webViewConfiguration.setAllowsInlineMediaPlayback(true);
         verify(mockPlatformHostApi.setAllowsInlineMediaPlayback(
+          instanceManager.getIdentifier(webViewConfiguration),
+          true,
+        ));
+      });
+
+      test('limitsNavigationsToAppBoundDomains', () {
+        webViewConfiguration.setLimitsNavigationsToAppBoundDomains(true);
+        verify(mockPlatformHostApi.setLimitsNavigationsToAppBoundDomains(
           instanceManager.getIdentifier(webViewConfiguration),
           true,
         ));
@@ -576,12 +585,45 @@ void main() {
               url: 'url',
               allHttpHeaderFields: <String, String>{},
             ),
-            targetFrame: WKFrameInfoData(isMainFrame: false),
+            targetFrame: WKFrameInfoData(
+                isMainFrame: false,
+                request: NSUrlRequestData(
+                  url: 'url',
+                  allHttpHeaderFields: <String, String>{},
+                )),
             navigationType: WKNavigationType.linkActivated,
           ),
         );
 
         expect(policyData.value, WKNavigationActionPolicyEnum.cancel);
+      });
+
+      test('decidePolicyForNavigationResponse', () async {
+        WebKitFlutterApis.instance = WebKitFlutterApis(
+          instanceManager: instanceManager,
+        );
+
+        navigationDelegate = WKNavigationDelegate(
+          instanceManager: instanceManager,
+          decidePolicyForNavigationResponse: (
+            WKWebView webView,
+            WKNavigationResponse navigationAction,
+          ) async {
+            return WKNavigationResponsePolicy.cancel;
+          },
+        );
+
+        final WKNavigationResponsePolicyEnum policy = await WebKitFlutterApis
+            .instance.navigationDelegate
+            .decidePolicyForNavigationResponse(
+          instanceManager.getIdentifier(navigationDelegate)!,
+          instanceManager.getIdentifier(webView)!,
+          WKNavigationResponseData(
+              response: NSHttpUrlResponseData(statusCode: 401),
+              forMainFrame: true),
+        );
+
+        expect(policy, WKNavigationResponsePolicyEnum.cancel);
       });
 
       test('didFailNavigation', () async {
@@ -605,7 +647,9 @@ void main() {
           NSErrorData(
             code: 23,
             domain: 'Hello',
-            localizedDescription: 'localiziedDescription',
+            userInfo: <String, Object?>{
+              NSErrorUserInfoKey.NSLocalizedDescription: 'my desc',
+            },
           ),
         );
 
@@ -637,7 +681,9 @@ void main() {
           NSErrorData(
             code: 23,
             domain: 'Hello',
-            localizedDescription: 'localiziedDescription',
+            userInfo: <String, Object?>{
+              NSErrorUserInfoKey.NSLocalizedDescription: 'my desc',
+            },
           ),
         );
 
@@ -669,6 +715,63 @@ void main() {
         );
 
         expect(argsCompleter.future, completion(<Object?>[webView]));
+      });
+
+      test('didReceiveAuthenticationChallenge', () async {
+        WebKitFlutterApis.instance = WebKitFlutterApis(
+          instanceManager: instanceManager,
+        );
+
+        const int credentialIdentifier = 3;
+        final NSUrlCredential credential = NSUrlCredential.detached(
+          instanceManager: instanceManager,
+        );
+        instanceManager.addHostCreatedInstance(
+          credential,
+          credentialIdentifier,
+        );
+
+        navigationDelegate = WKNavigationDelegate(
+          instanceManager: instanceManager,
+          didReceiveAuthenticationChallenge: (
+            WKWebView webView,
+            NSUrlAuthenticationChallenge challenge,
+            void Function(
+              NSUrlSessionAuthChallengeDisposition disposition,
+              NSUrlCredential? credential,
+            ) completionHandler,
+          ) {
+            completionHandler(
+              NSUrlSessionAuthChallengeDisposition.useCredential,
+              credential,
+            );
+          },
+        );
+
+        const int challengeIdentifier = 27;
+        instanceManager.addHostCreatedInstance(
+          NSUrlAuthenticationChallenge.detached(
+            protectionSpace: NSUrlProtectionSpace.detached(
+              host: null,
+              realm: null,
+              authenticationMethod: null,
+            ),
+            instanceManager: instanceManager,
+          ),
+          challengeIdentifier,
+        );
+
+        final AuthenticationChallengeResponse response = await WebKitFlutterApis
+            .instance.navigationDelegate
+            .didReceiveAuthenticationChallenge(
+          instanceManager.getIdentifier(navigationDelegate)!,
+          instanceManager.getIdentifier(webView)!,
+          challengeIdentifier,
+        );
+
+        expect(response.disposition,
+            NSUrlSessionAuthChallengeDisposition.useCredential);
+        expect(response.credentialIdentifier, credentialIdentifier);
       });
     });
 
@@ -820,12 +923,20 @@ void main() {
         ));
       });
 
-      test('customUserAgent', () {
+      test('setCustomUserAgent', () {
         webView.setCustomUserAgent('hello');
         verify(mockPlatformHostApi.setCustomUserAgent(
           webViewInstanceId,
           'hello',
         ));
+      });
+
+      test('getCustomUserAgent', () {
+        const String userAgent = 'str';
+        when(
+          mockPlatformHostApi.getCustomUserAgent(webViewInstanceId),
+        ).thenReturn(userAgent);
+        expect(webView.getCustomUserAgent(), completion(userAgent));
       });
 
       test('evaluateJavaScript', () {
@@ -842,7 +953,9 @@ void main() {
             details: NSErrorData(
               code: 0,
               domain: 'domain',
-              localizedDescription: 'desc',
+              userInfo: <String, Object?>{
+                NSErrorUserInfoKey.NSLocalizedDescription: 'desc',
+              },
             ),
           ),
         );
@@ -924,7 +1037,12 @@ void main() {
               url: 'url',
               allHttpHeaderFields: <String, String>{},
             ),
-            targetFrame: WKFrameInfoData(isMainFrame: false),
+            targetFrame: WKFrameInfoData(
+                isMainFrame: false,
+                request: NSUrlRequestData(
+                  url: 'url',
+                  allHttpHeaderFields: <String, String>{},
+                )),
             navigationType: WKNavigationType.linkActivated,
           ),
         );
@@ -983,7 +1101,8 @@ void main() {
 
         const WKSecurityOrigin origin =
             WKSecurityOrigin(host: 'host', port: 12, protocol: 'protocol');
-        const WKFrameInfo frame = WKFrameInfo(isMainFrame: false);
+        const WKFrameInfo frame =
+            WKFrameInfo(isMainFrame: false, request: NSUrlRequest(url: 'url'));
         const WKMediaCaptureType type = WKMediaCaptureType.microphone;
 
         flutterApi.requestMediaCapturePermission(
@@ -994,7 +1113,10 @@ void main() {
             port: origin.port,
             protocol: origin.protocol,
           ),
-          WKFrameInfoData(isMainFrame: frame.isMainFrame),
+          WKFrameInfoData(
+              isMainFrame: frame.isMainFrame,
+              request: NSUrlRequestData(
+                  url: 'url', allHttpHeaderFields: <String, String>{})),
           WKMediaCaptureTypeData(value: type),
         );
 

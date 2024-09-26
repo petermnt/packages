@@ -12,13 +12,14 @@ library network;
 import 'dart:async';
 import 'dart:io' as io;
 import 'dart:math' as math;
-// TODO(a14n): remove this import once Flutter 3.1 or later reaches stable (including flutter/flutter#104231)
-// ignore: unnecessary_import
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+
+// Method signature for _loadWithRetry decode callbacks.
+typedef _SimpleDecoderCallback = Future<ui.Codec> Function(
+    ui.ImmutableBuffer buffer);
 
 /// Fetches the image from the given URL, associating it with the given scale.
 ///
@@ -98,10 +99,10 @@ class NetworkImageWithRetry extends ImageProvider<NetworkImageWithRetry> {
   }
 
   @override
-  // TODO(cyanglaz): migrate to use the new APIs
-  // https://github.com/flutter/flutter/issues/105336
-  // ignore: deprecated_member_use
-  ImageStreamCompleter load(NetworkImageWithRetry key, DecoderCallback decode) {
+  ImageStreamCompleter loadImage(
+    NetworkImageWithRetry key,
+    ImageDecoderCallback decode,
+  ) {
     return OneFrameImageStreamCompleter(_loadWithRetry(key, decode),
         informationCollector: () sync* {
       yield ErrorDescription('Image provider: $this');
@@ -129,12 +130,7 @@ class NetworkImageWithRetry extends ImageProvider<NetworkImageWithRetry> {
   }
 
   Future<ImageInfo> _loadWithRetry(
-      // TODO(cyanglaz): migrate to use the new APIs
-      // https://github.com/flutter/flutter/issues/105336
-      // ignore: deprecated_member_use
-      NetworkImageWithRetry key,
-      // ignore: deprecated_member_use
-      DecoderCallback decode) async {
+      NetworkImageWithRetry key, _SimpleDecoderCallback decode) async {
     assert(key == this);
 
     final Stopwatch stopwatch = Stopwatch()..start();
@@ -184,14 +180,15 @@ class NetworkImageWithRetry extends ImageProvider<NetworkImageWithRetry> {
           );
         }
 
-        final ui.Codec codec = await decode(bytes);
+        final ui.Codec codec =
+            await decode(await ui.ImmutableBuffer.fromUint8List(bytes));
         final ui.Image image = (await codec.getNextFrame()).image;
         return ImageInfo(
           image: image,
           scale: key.scale,
         );
       } catch (error) {
-        request?.close();
+        await request?.close();
         lastFailure = error is FetchFailure
             ? error
             : FetchFailure._(
@@ -223,7 +220,7 @@ class NetworkImageWithRetry extends ImageProvider<NetworkImageWithRetry> {
   }
 
   @override
-  bool operator ==(dynamic other) {
+  bool operator ==(Object other) {
     if (other.runtimeType != runtimeType) {
       return false;
     }

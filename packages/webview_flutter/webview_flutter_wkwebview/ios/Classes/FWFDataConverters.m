@@ -103,7 +103,7 @@ extern WKUserScript *FWFNativeWKUserScriptFromScriptData(FWFWKUserScriptData *da
   return [[WKUserScript alloc]
         initWithSource:data.source
          injectionTime:FWFNativeWKUserScriptInjectionTimeFromEnumData(data.injectionTime)
-      forMainFrameOnly:data.isMainFrameOnly.boolValue];
+      forMainFrameOnly:data.isMainFrameOnly];
 }
 
 WKUserScriptInjectionTime FWFNativeWKUserScriptInjectionTimeFromEnumData(
@@ -167,7 +167,7 @@ FWFWKNavigationActionData *FWFWKNavigationActionDataFromNativeWKNavigationAction
 
 FWFNSUrlRequestData *FWFNSUrlRequestDataFromNativeNSURLRequest(NSURLRequest *request) {
   return [FWFNSUrlRequestData
-              makeWithUrl:request.URL.absoluteString
+              makeWithUrl:request.URL.absoluteString == nil ? @"" : request.URL.absoluteString
                httpMethod:request.HTTPMethod
                  httpBody:request.HTTPBody
                               ? [FlutterStandardTypedData typedDataWithBytes:request.HTTPBody]
@@ -176,7 +176,27 @@ FWFNSUrlRequestData *FWFNSUrlRequestDataFromNativeNSURLRequest(NSURLRequest *req
 }
 
 FWFWKFrameInfoData *FWFWKFrameInfoDataFromNativeWKFrameInfo(WKFrameInfo *info) {
-  return [FWFWKFrameInfoData makeWithIsMainFrame:@(info.isMainFrame)];
+  return [FWFWKFrameInfoData
+      makeWithIsMainFrame:info.isMainFrame
+                  request:FWFNSUrlRequestDataFromNativeNSURLRequest(info.request)];
+}
+
+FWFWKNavigationResponseData *FWFWKNavigationResponseDataFromNativeNavigationResponse(
+    WKNavigationResponse *response) {
+  return [FWFWKNavigationResponseData
+      makeWithResponse:FWFNSHttpUrlResponseDataFromNativeNSURLResponse(response.response)
+          forMainFrame:response.forMainFrame];
+}
+
+/// Cast the NSURLResponse object to NSHTTPURLResponse.
+///
+/// NSURLResponse doesn't contain the status code so it must be cast to NSHTTPURLResponse.
+/// This cast will always succeed because the NSURLResponse object actually is an instance of
+/// NSHTTPURLResponse. See:
+/// https://developer.apple.com/documentation/foundation/nsurlresponse#overview
+FWFNSHttpUrlResponseData *FWFNSHttpUrlResponseDataFromNativeNSURLResponse(NSURLResponse *response) {
+  NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+  return [FWFNSHttpUrlResponseData makeWithStatusCode:httpResponse.statusCode];
 }
 
 WKNavigationActionPolicy FWFNativeWKNavigationActionPolicyFromEnumData(
@@ -192,9 +212,31 @@ WKNavigationActionPolicy FWFNativeWKNavigationActionPolicyFromEnumData(
 }
 
 FWFNSErrorData *FWFNSErrorDataFromNativeNSError(NSError *error) {
-  return [FWFNSErrorData makeWithCode:@(error.code)
-                               domain:error.domain
-                 localizedDescription:error.localizedDescription];
+  NSMutableDictionary *userInfo;
+  if (error.userInfo) {
+    userInfo = [NSMutableDictionary dictionary];
+    for (NSErrorUserInfoKey key in error.userInfo.allKeys) {
+      NSObject *value = error.userInfo[key];
+      if ([value isKindOfClass:[NSString class]]) {
+        userInfo[key] = value;
+      } else {
+        userInfo[key] = [NSString stringWithFormat:@"Unsupported Type: %@", value.description];
+      }
+    }
+  }
+  return [FWFNSErrorData makeWithCode:error.code domain:error.domain userInfo:userInfo];
+}
+
+WKNavigationResponsePolicy FWFNativeWKNavigationResponsePolicyFromEnum(
+    FWFWKNavigationResponsePolicyEnum policy) {
+  switch (policy) {
+    case FWFWKNavigationResponsePolicyEnumAllow:
+      return WKNavigationResponsePolicyAllow;
+    case FWFWKNavigationResponsePolicyEnumCancel:
+      return WKNavigationResponsePolicyCancel;
+  }
+
+  return -1;
 }
 
 FWFNSKeyValueChangeKeyEnumData *FWFNSKeyValueChangeKeyEnumDataFromNativeNSKeyValueChangeKey(
@@ -210,6 +252,8 @@ FWFNSKeyValueChangeKeyEnumData *FWFNSKeyValueChangeKeyEnumDataFromNativeNSKeyVal
         makeWithValue:FWFNSKeyValueChangeKeyEnumNotificationIsPrior];
   } else if ([key isEqualToString:NSKeyValueChangeOldKey]) {
     return [FWFNSKeyValueChangeKeyEnumData makeWithValue:FWFNSKeyValueChangeKeyEnumOldValue];
+  } else {
+    return [FWFNSKeyValueChangeKeyEnumData makeWithValue:FWFNSKeyValueChangeKeyEnumUnknown];
   }
 
   return nil;
@@ -234,12 +278,14 @@ FWFWKNavigationType FWFWKNavigationTypeFromNativeWKNavigationType(WKNavigationTy
     case WKNavigationTypeOther:
       return FWFWKNavigationTypeOther;
   }
+
+  return FWFWKNavigationTypeUnknown;
 }
 
 FWFWKSecurityOriginData *FWFWKSecurityOriginDataFromNativeWKSecurityOrigin(
     WKSecurityOrigin *origin) {
   return [FWFWKSecurityOriginData makeWithHost:origin.host
-                                          port:@(origin.port)
+                                          port:origin.port
                                       protocol:origin.protocol];
 }
 
@@ -270,4 +316,37 @@ FWFWKMediaCaptureTypeData *FWFWKMediaCaptureTypeDataFromNativeWKMediaCaptureType
   }
 
   return nil;
+}
+
+NSURLSessionAuthChallengeDisposition
+FWFNativeNSURLSessionAuthChallengeDispositionFromFWFNSUrlSessionAuthChallengeDisposition(
+    FWFNSUrlSessionAuthChallengeDisposition value) {
+  switch (value) {
+    case FWFNSUrlSessionAuthChallengeDispositionUseCredential:
+      return NSURLSessionAuthChallengeUseCredential;
+    case FWFNSUrlSessionAuthChallengeDispositionPerformDefaultHandling:
+      return NSURLSessionAuthChallengePerformDefaultHandling;
+    case FWFNSUrlSessionAuthChallengeDispositionCancelAuthenticationChallenge:
+      return NSURLSessionAuthChallengeCancelAuthenticationChallenge;
+    case FWFNSUrlSessionAuthChallengeDispositionRejectProtectionSpace:
+      return NSURLSessionAuthChallengeRejectProtectionSpace;
+  }
+
+  return -1;
+}
+
+NSURLCredentialPersistence FWFNativeNSURLCredentialPersistenceFromFWFNSUrlCredentialPersistence(
+    FWFNSUrlCredentialPersistence value) {
+  switch (value) {
+    case FWFNSUrlCredentialPersistenceNone:
+      return NSURLCredentialPersistenceNone;
+    case FWFNSUrlCredentialPersistenceSession:
+      return NSURLCredentialPersistenceForSession;
+    case FWFNSUrlCredentialPersistencePermanent:
+      return NSURLCredentialPersistencePermanent;
+    case FWFNSUrlCredentialPersistenceSynchronizable:
+      return NSURLCredentialPersistenceSynchronizable;
+  }
+
+  return -1;
 }

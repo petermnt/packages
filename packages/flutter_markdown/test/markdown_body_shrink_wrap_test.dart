@@ -16,10 +16,8 @@ void defineTests() {
       'Then it wraps its content',
       (WidgetTester tester) async {
         await tester.pumpWidget(boilerplate(
-          // TODO(goderbauer): Make this const when this package requires Flutter 3.8 or later.
-          // ignore: prefer_const_constructors
-          Stack(
-            children: const <Widget>[
+          const Stack(
+            children: <Widget>[
               Text('shrinkWrap=true'),
               Align(
                 alignment: Alignment.bottomCenter,
@@ -32,7 +30,7 @@ void defineTests() {
         ));
 
         final Rect stackRect = tester.getRect(find.byType(Stack));
-        final Rect textRect = tester.getRect(find.byType(Text));
+        final Rect textRect = tester.getRect(find.text('shrinkWrap=true'));
         final Rect markdownBodyRect = tester.getRect(find.byType(MarkdownBody));
 
         // The Text should be on the top of the Stack
@@ -48,10 +46,8 @@ void defineTests() {
       'Then it expands to the maximum allowed height',
       (WidgetTester tester) async {
         await tester.pumpWidget(boilerplate(
-          // TODO(goderbauer): Make this const when this package requires Flutter 3.8 or later.
-          // ignore: prefer_const_constructors
-          Stack(
-            children: const <Widget>[
+          const Stack(
+            children: <Widget>[
               Text('shrinkWrap=false test'),
               Align(
                 alignment: Alignment.bottomCenter,
@@ -65,7 +61,8 @@ void defineTests() {
         ));
 
         final Rect stackRect = tester.getRect(find.byType(Stack));
-        final Rect textRect = tester.getRect(find.byType(Text));
+        final Rect textRect =
+            tester.getRect(find.text('shrinkWrap=false test'));
         final Rect markdownBodyRect = tester.getRect(find.byType(MarkdownBody));
 
         // The Text should be on the top of the Stack

@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_adaptive_scaffold/flutter_adaptive_scaffold.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'test_breakpoints.dart';
 
@@ -34,10 +35,12 @@ class TestScaffold extends StatefulWidget {
     super.key,
     this.initialIndex = 0,
     this.isAnimated = true,
+    this.appBarBreakpoint,
   });
 
   final int? initialIndex;
   final bool isAnimated;
+  final Breakpoint? appBarBreakpoint;
 
   static const List<NavigationDestination> destinations =
       <NavigationDestination>[
@@ -75,6 +78,7 @@ class TestScaffoldState extends State<TestScaffold> {
         });
       },
       drawerBreakpoint: NeverOnBreakpoint(),
+      appBarBreakpoint: widget.appBarBreakpoint,
       internalAnimations: widget.isAnimated,
       smallBreakpoint: TestBreakpoint0(),
       mediumBreakpoint: TestBreakpoint800(),
@@ -122,6 +126,7 @@ enum SimulatedLayout {
   MaterialApp app({
     int? initialIndex,
     bool animations = true,
+    Breakpoint? appBarBreakpoint,
   }) {
     return MaterialApp(
       theme: ThemeData.light().copyWith(
@@ -132,21 +137,22 @@ enum SimulatedLayout {
         ),
       ),
       home: MediaQuery(
-        data: MediaQueryData(size: size),
+        data: MediaQueryData(
+          size: size,
+          padding: const EdgeInsets.only(top: 30),
+        ),
         child: TestScaffold(
           initialIndex: initialIndex,
           isAnimated: animations,
+          appBarBreakpoint: appBarBreakpoint,
         ),
       ),
     );
   }
 
-  MediaQuery get slot {
+  MediaQuery slot(WidgetTester tester) {
     return MediaQuery(
-      // TODO(stuartmorgan): Replace with .fromView once this package requires
-      // Flutter 3.8+.
-      // ignore: deprecated_member_use
-      data: MediaQueryData.fromWindow(WidgetsBinding.instance.window)
+      data: MediaQueryData.fromView(tester.view)
           .copyWith(size: Size(_width, _height)),
       child: Theme(
         data: ThemeData(),

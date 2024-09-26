@@ -3,18 +3,15 @@
 // found in the LICENSE file.
 
 import 'package:file/file.dart';
-import 'package:git/git.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
 import 'package:pub_semver/pub_semver.dart';
 
-import 'common/core.dart';
 import 'common/git_version_finder.dart';
+import 'common/output_utils.dart';
 import 'common/package_looping_command.dart';
 import 'common/package_state_utils.dart';
-import 'common/process_runner.dart';
 import 'common/pub_version_finder.dart';
 import 'common/repository_package.dart';
 
@@ -98,19 +95,13 @@ Map<Version, NextVersionType> getAllowedNextVersions(
 class VersionCheckCommand extends PackageLoopingCommand {
   /// Creates an instance of the version check command.
   VersionCheckCommand(
-    Directory packagesDir, {
-    ProcessRunner processRunner = const ProcessRunner(),
-    Platform platform = const LocalPlatform(),
-    GitDir? gitDir,
+    super.packagesDir, {
+    super.processRunner,
+    super.platform,
+    super.gitDir,
     http.Client? httpClient,
-  })  : _pubVersionFinder =
-            PubVersionFinder(httpClient: httpClient ?? http.Client()),
-        super(
-          packagesDir,
-          processRunner: processRunner,
-          platform: platform,
-          gitDir: gitDir,
-        ) {
+  }) : _pubVersionFinder =
+            PubVersionFinder(httpClient: httpClient ?? http.Client()) {
     argParser.addFlag(
       _againstPubFlag,
       help: 'Whether the version check should run against the version on pub.\n'
@@ -172,6 +163,9 @@ class VersionCheckCommand extends PackageLoopingCommand {
   final String name = 'version-check';
 
   @override
+  List<String> get aliases => <String>['check-version'];
+
+  @override
   final String description =
       'Checks if the versions of packages have been incremented per pub specification.\n'
       'Also checks if the latest version in CHANGELOG matches the version in pubspec.\n\n'
@@ -216,20 +210,16 @@ class VersionCheckCommand extends PackageLoopingCommand {
     switch (versionState) {
       case _CurrentVersionState.unchanged:
         versionChanged = false;
-        break;
       case _CurrentVersionState.validIncrease:
       case _CurrentVersionState.validRevert:
       case _CurrentVersionState.newPackage:
         versionChanged = true;
-        break;
       case _CurrentVersionState.invalidChange:
         versionChanged = true;
         errors.add('Disallowed version change.');
-        break;
       case _CurrentVersionState.unknown:
         versionChanged = false;
         errors.add('Unable to determine previous version.');
-        break;
     }
 
     if (!(await _validateChangelogVersion(package,
@@ -564,11 +554,12 @@ ${indentation}The first version listed in CHANGELOG.md is $fromChangeLog.
       } else {
         printError(
             'No version change found, but the change to this package could '
-            'not be verified to be exempt from version changes according to '
-            'repository policy. If this is a false positive, please comment in '
-            'the PR to explain why the PR is exempt, and add (or ask your '
-            'reviewer to add) the "$_missingVersionChangeOverrideLabel" '
-            'label.');
+            'not be verified to be exempt\n'
+            'from version changes according to repository policy.\n'
+            'If this is a false positive, please comment in '
+            'the PR to explain why the PR\n'
+            'is exempt, and add (or ask your reviewer to add) the '
+            '"$_missingVersionChangeOverrideLabel" label.');
         return 'Missing version change';
       }
     }
@@ -578,13 +569,13 @@ ${indentation}The first version listed in CHANGELOG.md is $fromChangeLog.
         logWarning('Ignoring lack of CHANGELOG update due to the '
             '"$_missingChangelogChangeOverrideLabel" label.');
       } else {
-        printError(
-            'No CHANGELOG change found. If this PR needs an exemption from '
-            'the standard policy of listing all changes in the CHANGELOG, '
+        printError('No CHANGELOG change found.\n'
+            'If this PR needs an exemption from the standard policy of listing '
+            'all changes in the CHANGELOG,\n'
             'comment in the PR to explain why the PR is exempt, and add (or '
-            'ask your reviewer to add) the '
-            '"$_missingChangelogChangeOverrideLabel" label. Otherwise, '
-            'please add a NEXT entry in the CHANGELOG as described in '
+            'ask your reviewer to add) the\n'
+            '"$_missingChangelogChangeOverrideLabel" label.\n'
+            'Otherwise, please add a NEXT entry in the CHANGELOG as described in '
             'the contributing guide.');
         return 'Missing CHANGELOG change';
       }

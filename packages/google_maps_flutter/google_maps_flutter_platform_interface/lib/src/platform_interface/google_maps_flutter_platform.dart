@@ -3,9 +3,6 @@
 // found in the LICENSE file.
 
 import 'dart:async';
-// TODO(a14n): remove this import once Flutter 3.1 or later reaches stable (including flutter/flutter#104231)
-// ignore: unnecessary_import
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -143,6 +140,20 @@ abstract class GoogleMapsFlutterPlatform extends PlatformInterface {
     required int mapId,
   }) {
     throw UnimplementedError('updateTileOverlays() has not been implemented.');
+  }
+
+  /// Updates cluster manager configuration.
+  ///
+  /// Change listeners are notified once the update has been made on the
+  /// platform side.
+  ///
+  /// The returned [Future] completes after listeners have been notified.
+  Future<void> updateClusterManagers(
+    ClusterManagerUpdates clusterManagerUpdates, {
+    required int mapId,
+  }) {
+    throw UnimplementedError(
+        'updateClusterManagers() has not been implemented.');
   }
 
   /// Clears the tile cache so that all tiles will be requested again from the
@@ -360,9 +371,20 @@ abstract class GoogleMapsFlutterPlatform extends PlatformInterface {
     throw UnimplementedError('onLongPress() has not been implemented.');
   }
 
+  /// A marker icon managed by [ClusterManager] has been tapped.
+  Stream<ClusterTapEvent> onClusterTap({required int mapId}) {
+    throw UnimplementedError('onClusterTap() has not been implemented.');
+  }
+
   /// Dispose of whatever resources the `mapId` is holding on to.
   void dispose({required int mapId}) {
     throw UnimplementedError('dispose() has not been implemented.');
+  }
+
+  /// If the last attempt to set the style via [MapConfiguration.style] failed,
+  /// returns the error information, otherwise returns null.
+  Future<String?> getStyleError({required int mapId}) async {
+    return null;
   }
 
   /// Returns a widget displaying the map view - deprecated, use

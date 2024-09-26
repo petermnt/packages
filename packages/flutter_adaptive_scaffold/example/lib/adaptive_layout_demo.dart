@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// TODO(goderbauer): Remove this ignore when this package requires Flutter 3.8 or later.
-// ignore_for_file: prefer_const_constructors
-
 import 'package:flutter/material.dart';
 import 'package:flutter_adaptive_scaffold/flutter_adaptive_scaffold.dart';
 
@@ -29,7 +26,10 @@ class MyApp extends StatelessWidget {
 /// [AdaptiveLayout].
 class MyHomePage extends StatefulWidget {
   /// Creates a const [MyHomePage].
-  const MyHomePage({super.key});
+  const MyHomePage({super.key, this.transitionDuration = 1000});
+
+  /// Declare transition duration.
+  final int transitionDuration;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -37,6 +37,16 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int selectedNavigation = 0;
+  int _transitionDuration = 1000;
+
+  // Initialize transition time variable.
+  @override
+  void initState() {
+    super.initState();
+    setState(() {
+      _transitionDuration = widget.transitionDuration;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,8 +68,8 @@ class _MyHomePageState extends State<MyHomePage> {
       children: <Widget>[
         const Divider(color: Colors.black),
         const SizedBox(height: 10),
-        Row(
-          children: const <Widget>[
+        const Row(
+          children: <Widget>[
             SizedBox(width: 27),
             Text('Folders', style: TextStyle(fontSize: 16)),
           ],
@@ -74,8 +84,8 @@ class _MyHomePageState extends State<MyHomePage> {
               iconSize: 21,
             ),
             const SizedBox(width: 21),
-            Flexible(
-              child: const Text(
+            const Flexible(
+              child: Text(
                 'Freelance',
                 overflow: TextOverflow.ellipsis,
               ),
@@ -92,8 +102,8 @@ class _MyHomePageState extends State<MyHomePage> {
               iconSize: 21,
             ),
             const SizedBox(width: 21),
-            Flexible(
-              child: const Text(
+            const Flexible(
+              child: Text(
                 'Mortgage',
                 overflow: TextOverflow.ellipsis,
               ),
@@ -161,6 +171,8 @@ class _MyHomePageState extends State<MyHomePage> {
     // AdaptiveLayout has a number of slots that take SlotLayouts and these
     // SlotLayouts' configs take maps of Breakpoints to SlotLayoutConfigs.
     return AdaptiveLayout(
+      // An option to override the default transition duration.
+      transitionDuration: Duration(milliseconds: _transitionDuration),
       // Primary navigation config has nothing from 0 to 600 dp screen width,
       // then an unextended NavigationRail with no labels and just icons then an
       // extended NavigationRail with both icons and labels.
@@ -178,7 +190,8 @@ class _MyHomePageState extends State<MyHomePage> {
               },
               leading: const Icon(Icons.menu),
               destinations: destinations
-                  .map((_) => AdaptiveScaffold.toRailDestination(_))
+                  .map((NavigationDestination destination) =>
+                      AdaptiveScaffold.toRailDestination(destination))
                   .toList(),
               backgroundColor: navRailTheme.backgroundColor,
               selectedIconTheme: navRailTheme.selectedIconTheme,
@@ -198,9 +211,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 });
               },
               extended: true,
-              leading: Row(
+              leading: const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: const <Widget>[
+                children: <Widget>[
                   Text(
                     'REPLY',
                     style: TextStyle(color: Color.fromARGB(255, 255, 201, 197)),
@@ -209,7 +222,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 ],
               ),
               destinations: destinations
-                  .map((_) => AdaptiveScaffold.toRailDestination(_))
+                  .map((NavigationDestination destination) =>
+                      AdaptiveScaffold.toRailDestination(destination))
                   .toList(),
               trailing: trailingNavRail,
               backgroundColor: navRailTheme.backgroundColor,
@@ -260,6 +274,6 @@ class _MyHomePageState extends State<MyHomePage> {
         },
       ),
     );
-    // #enddocregion
+    // #enddocregion Example
   }
 }

@@ -5,7 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:go_router/src/configuration.dart';
+import 'package:go_router/src/state.dart';
 
 import 'test_helpers.dart';
 
@@ -17,13 +17,13 @@ void main() {
             path: '/',
             builder: (BuildContext context, _) {
               final GoRouterState state = GoRouterState.of(context);
-              return Text('/ ${state.queryParams['p']}');
+              return Text('/ ${state.uri.queryParameters['p']}');
             }),
         GoRoute(
             path: '/a',
             builder: (BuildContext context, _) {
               final GoRouterState state = GoRouterState.of(context);
-              return Text('/a ${state.queryParams['p']}');
+              return Text('/a ${state.uri.queryParameters['p']}');
             }),
       ];
       final GoRouter router = await createRouter(routes, tester);
@@ -42,7 +42,7 @@ void main() {
             path: '/',
             builder: (_, __) {
               return Builder(builder: (BuildContext context) {
-                return Text('1 ${GoRouterState.of(context).location}');
+                return Text('1 ${GoRouterState.of(context).uri}');
               });
             },
             routes: <GoRoute>[
@@ -50,7 +50,7 @@ void main() {
                   path: 'a',
                   builder: (_, __) {
                     return Builder(builder: (BuildContext context) {
-                      return Text('2 ${GoRouterState.of(context).location}');
+                      return Text('2 ${GoRouterState.of(context).uri}');
                     });
                   }),
             ]),
@@ -74,7 +74,7 @@ void main() {
             path: '/',
             builder: (_, __) {
               return Builder(builder: (BuildContext context) {
-                return Text('1 ${GoRouterState.of(context).location}');
+                return Text('1 ${GoRouterState.of(context).uri}');
               });
             },
             routes: <GoRoute>[
@@ -83,7 +83,7 @@ void main() {
                   builder: (_, __) {
                     return Builder(builder: (BuildContext context) {
                       return Text(
-                          '2 ${GoRouterState.of(context).params['id']}');
+                          '2 ${GoRouterState.of(context).pathParameters['id']}');
                     });
                   }),
             ]),
@@ -110,7 +110,7 @@ void main() {
             path: '/',
             builder: (_, __) {
               return Builder(builder: (BuildContext context) {
-                return Text(GoRouterState.of(context).location);
+                return Text(GoRouterState.of(context).uri.toString());
               });
             },
             routes: <GoRoute>[
@@ -118,7 +118,8 @@ void main() {
                   path: 'a',
                   builder: (_, __) {
                     return Builder(builder: (BuildContext context) {
-                      return Text(key: key, GoRouterState.of(context).location);
+                      return Text(
+                          key: key, GoRouterState.of(context).uri.toString());
                     });
                   }),
             ]),
@@ -152,7 +153,7 @@ void main() {
             path: '/',
             builder: (_, __) {
               return Builder(builder: (BuildContext context) {
-                return Text(GoRouterState.of(context).location);
+                return Text(GoRouterState.of(context).uri.toString());
               });
             },
             routes: <GoRoute>[
@@ -160,7 +161,8 @@ void main() {
                   path: 'a',
                   builder: (_, __) {
                     return Builder(builder: (BuildContext context) {
-                      return Text(key: key, GoRouterState.of(context).location);
+                      return Text(
+                          key: key, GoRouterState.of(context).uri.toString());
                     });
                   }),
             ]),
@@ -183,6 +185,99 @@ void main() {
       await tester.pumpAndSettle();
       expect(registry.registry.length, 1);
       expect(find.byKey(key), findsNothing);
+    });
+
+    testWidgets('GoRouterState topRoute accessible from StatefulShellRoute',
+        (WidgetTester tester) async {
+      final GlobalKey<NavigatorState> rootNavigatorKey =
+          GlobalKey<NavigatorState>();
+      final GlobalKey<NavigatorState> shellNavigatorKey =
+          GlobalKey<NavigatorState>();
+      final List<RouteBase> routes = <RouteBase>[
+        ShellRoute(
+          navigatorKey: shellNavigatorKey,
+          builder: (BuildContext context, GoRouterState state, Widget child) {
+            return Scaffold(
+              body: Column(
+                children: <Widget>[
+                  const Text('Screen 0'),
+                  Expanded(child: child),
+                ],
+              ),
+            );
+          },
+          routes: <RouteBase>[
+            GoRoute(
+              name: 'root',
+              path: '/',
+              builder: (BuildContext context, GoRouterState state) {
+                return const Scaffold(
+                  body: Text('Screen 1'),
+                );
+              },
+              routes: <RouteBase>[
+                StatefulShellRoute.indexedStack(
+                  parentNavigatorKey: rootNavigatorKey,
+                  builder: (
+                    BuildContext context,
+                    GoRouterState state,
+                    StatefulNavigationShell navigationShell,
+                  ) {
+                    final String? routeName =
+                        GoRouterState.of(context).topRoute?.name;
+                    final String title = switch (routeName) {
+                      'a' => 'A',
+                      'b' => 'B',
+                      _ => 'Unknown',
+                    };
+                    return Column(
+                      children: <Widget>[
+                        Text(title),
+                        Expanded(child: navigationShell),
+                      ],
+                    );
+                  },
+                  branches: <StatefulShellBranch>[
+                    StatefulShellBranch(
+                      routes: <RouteBase>[
+                        GoRoute(
+                          name: 'a',
+                          path: 'a',
+                          builder: (BuildContext context, GoRouterState state) {
+                            return const Scaffold(
+                              body: Text('Screen 2'),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    StatefulShellBranch(
+                      routes: <RouteBase>[
+                        GoRoute(
+                          name: 'b',
+                          path: 'b',
+                          builder: (BuildContext context, GoRouterState state) {
+                            return const Scaffold(
+                              body: Text('Screen 2'),
+                            );
+                          },
+                        ),
+                      ],
+                    )
+                  ],
+                ),
+              ],
+            )
+          ],
+        ),
+      ];
+      final GoRouter router = await createRouter(routes, tester,
+          initialLocation: '/a', navigatorKey: rootNavigatorKey);
+      expect(find.text('A'), findsOneWidget);
+
+      router.go('/b');
+      await tester.pumpAndSettle();
+      expect(find.text('B'), findsOneWidget);
     });
   });
 }

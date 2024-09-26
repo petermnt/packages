@@ -2,11 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// TODO(a14n): remove this import once Flutter 3.1 or later reaches stable (including flutter/flutter#105648)
-// ignore: unnecessary_import
-import 'dart:ui' show Brightness;
-
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:url_launcher/src/legacy_api.dart';
@@ -238,18 +235,21 @@ void main() {
         ..setResponse(true);
 
       final TestWidgetsFlutterBinding binding =
-          _anonymize(TestWidgetsFlutterBinding.ensureInitialized())!
-              as TestWidgetsFlutterBinding;
+          TestWidgetsFlutterBinding.ensureInitialized();
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-      binding.renderView.automaticSystemUiAdjustment = true;
+      final RenderView renderView =
+          RenderView(view: binding.platformDispatcher.implicitView!);
+      binding.addRenderView(renderView);
+      renderView.automaticSystemUiAdjustment = true;
       final Future<bool> launchResult =
           launch('http://flutter.dev/', statusBarBrightness: Brightness.dark);
 
       // Should take over control of the automaticSystemUiAdjustment while it's
       // pending, then restore it back to normal after the launch finishes.
-      expect(binding.renderView.automaticSystemUiAdjustment, isFalse);
+      expect(renderView.automaticSystemUiAdjustment, isFalse);
       await launchResult;
-      expect(binding.renderView.automaticSystemUiAdjustment, isTrue);
+      expect(renderView.automaticSystemUiAdjustment, isTrue);
+      binding.removeRenderView(renderView);
     });
 
     test('sets automaticSystemUiAdjustment to not be null', () async {
@@ -267,18 +267,21 @@ void main() {
         ..setResponse(true);
 
       final TestWidgetsFlutterBinding binding =
-          _anonymize(TestWidgetsFlutterBinding.ensureInitialized())!
-              as TestWidgetsFlutterBinding;
+          TestWidgetsFlutterBinding.ensureInitialized();
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      expect(binding.renderView.automaticSystemUiAdjustment, true);
+      final RenderView renderView =
+          RenderView(view: binding.platformDispatcher.implicitView!);
+      binding.addRenderView(renderView);
+      expect(renderView.automaticSystemUiAdjustment, true);
       final Future<bool> launchResult =
           launch('http://flutter.dev/', statusBarBrightness: Brightness.dark);
 
       // The automaticSystemUiAdjustment should be set before the launch
       // and equal to true after the launch result is complete.
-      expect(binding.renderView.automaticSystemUiAdjustment, true);
+      expect(renderView.automaticSystemUiAdjustment, true);
       await launchResult;
-      expect(binding.renderView.automaticSystemUiAdjustment, true);
+      expect(renderView.automaticSystemUiAdjustment, true);
+      binding.removeRenderView(renderView);
     });
 
     test('open non-parseable url', () async {
@@ -318,9 +321,3 @@ void main() {
     });
   });
 }
-
-/// This removes the type information from a value so that it can be cast
-/// to another type even if that cast is redundant.
-/// We use this so that APIs whose type have become more descriptive can still
-/// be used on the stable branch where they require a cast.
-Object? _anonymize<T>(T? value) => value;

@@ -9,9 +9,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-// TODO(a14n): remove this import once Flutter 3.1 or later reaches stable (including flutter/flutter#104231)
-// ignore: unnecessary_import
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +21,7 @@ Future<void> main() async {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   final HttpServer server = await HttpServer.bind(InternetAddress.anyIPv4, 0);
-  server.forEach((HttpRequest request) {
+  unawaited(server.forEach((HttpRequest request) {
     if (request.uri.path == '/hello.txt') {
       request.response.writeln('Hello, world.');
     } else if (request.uri.path == '/secondary.txt') {
@@ -37,7 +34,7 @@ Future<void> main() async {
       fail('unexpected request: ${request.method} ${request.uri}');
     }
     request.response.close();
-  });
+  }));
   final String prefixUrl = 'http://${server.address.address}:${server.port}';
   final String primaryUrl = '$prefixUrl/hello.txt';
   final String secondaryUrl = '$prefixUrl/secondary.txt';
@@ -147,11 +144,9 @@ Future<void> main() async {
       'test_header': 'flutter_test_header'
     };
     await controller.loadUrl(headersUrl, headers: headers);
-    final String? currentUrl = await controller.currentUrl();
-    expect(currentUrl, headersUrl);
 
-    await pageStarts.stream.firstWhere((String url) => url == currentUrl);
-    await pageLoads.stream.firstWhere((String url) => url == currentUrl);
+    await pageStarts.stream.firstWhere((String url) => url == headersUrl);
+    await pageLoads.stream.firstWhere((String url) => url == headersUrl);
 
     final String content = await controller
         .runJavascriptReturningResult('document.documentElement.innerText');
@@ -525,57 +520,6 @@ Future<void> main() async {
           await controller.runJavascriptReturningResult('isFullScreen();');
       expect(fullScreen, _webviewBool(false));
     });
-
-    // allowsInlineMediaPlayback is a noop on Android, so it is skipped.
-    testWidgets(
-        'Video plays full screen when allowsInlineMediaPlayback is false',
-        (WidgetTester tester) async {
-      final Completer<WebViewController> controllerCompleter =
-          Completer<WebViewController>();
-      final Completer<void> pageLoaded = Completer<void>();
-      final Completer<void> videoPlaying = Completer<void>();
-
-      await tester.pumpWidget(
-        Directionality(
-          textDirection: TextDirection.ltr,
-          child: WebView(
-            initialUrl: 'data:text/html;charset=utf-8;base64,$videoTestBase64',
-            onWebViewCreated: (WebViewController controller) {
-              controllerCompleter.complete(controller);
-            },
-            javascriptMode: JavascriptMode.unrestricted,
-            javascriptChannels: <JavascriptChannel>{
-              JavascriptChannel(
-                name: 'VideoTestTime',
-                onMessageReceived: (JavascriptMessage message) {
-                  final double currentTime = double.parse(message.message);
-                  // Let it play for at least 1 second to make sure the related video's properties are set.
-                  if (currentTime > 1 && !videoPlaying.isCompleted) {
-                    videoPlaying.complete(null);
-                  }
-                },
-              ),
-            },
-            onPageFinished: (String url) {
-              pageLoaded.complete(null);
-            },
-            initialMediaPlaybackPolicy: AutoMediaPlaybackPolicy.always_allow,
-          ),
-        ),
-      );
-      final WebViewController controller = await controllerCompleter.future;
-      await pageLoaded.future;
-
-      // Pump once to trigger the video play.
-      await tester.pump();
-
-      // Makes sure we get the correct event that indicates the video is actually playing.
-      await videoPlaying.future;
-
-      final String fullScreen =
-          await controller.runJavascriptReturningResult('isFullScreen();');
-      expect(fullScreen, _webviewBool(true));
-    }, skip: Platform.isAndroid);
   });
 
   group('Audio playback policy', () {

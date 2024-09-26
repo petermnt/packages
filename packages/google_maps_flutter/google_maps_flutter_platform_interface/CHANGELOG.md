@@ -1,5 +1,40 @@
-## NEXT
+## 2.6.0
 
+* Adds support for marker clustering.
+
+## 2.5.0
+
+* Adds `style` to the `MapConfiguration` to allow setting style as part of
+  map creation.
+* Adds `getStyleError` to the platform interface, to allow asynchronous access
+  to style errors that occur during initialization.
+* Updates minimum supported SDK version to Flutter 3.13/Dart 3.1.
+
+## 2.4.3
+
+* Updates minimum required plugin_platform_interface version to 2.1.7.
+
+## 2.4.2
+
+* Updates minimum supported SDK version to Flutter 3.10/Dart 3.0.
+* Fixes new lint warnings.
+
+## 2.4.1
+
+* Adds pub topics to package metadata.
+* Updates minimum supported SDK version to Flutter 3.7/Dart 2.19.
+
+## 2.4.0
+
+* Adds options for gesture handling and tilt controls on web.
+
+## 2.3.0
+
+* Adds a `cloudMapId` parameter to support cloud-based map styling.
+
+## 2.2.7
+
+* Removes obsolete null checks on non-nullable values.
 * Updates minimum Flutter version to 3.3.
 * Aligns Dart and Flutter SDK constraints.
 
@@ -53,7 +88,7 @@
 
 ## 2.1.5
 
-Removes dependency on `meta`.
+* Removes dependency on `meta`.
 
 ## 2.1.4
 

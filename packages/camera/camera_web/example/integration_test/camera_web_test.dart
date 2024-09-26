@@ -4,9 +4,6 @@
 
 import 'dart:async';
 import 'dart:html';
-// TODO(a14n): remove this import once Flutter 3.1 or later reaches stable (including flutter/flutter#106316)
-// ignore: unnecessary_import
-import 'dart:ui';
 
 import 'package:async/async.dart';
 import 'package:camera_platform_interface/camera_platform_interface.dart';
@@ -101,24 +98,18 @@ void main() {
         );
       });
 
-      testWidgets('requests video and audio permissions',
-          (WidgetTester tester) async {
+      testWidgets('requests video permissions', (WidgetTester tester) async {
         final List<CameraDescription> _ =
             await CameraPlatform.instance.availableCameras();
 
         verify(
-          () => cameraService.getMediaStreamForOptions(
-            const CameraOptions(
-              audio: AudioConstraints(enabled: true),
-            ),
-          ),
+          () => cameraService.getMediaStreamForOptions(const CameraOptions()),
         ).called(1);
       });
 
       testWidgets(
           'releases the camera stream '
-          'used to request video and audio permissions',
-          (WidgetTester tester) async {
+          'used to request video permissions', (WidgetTester tester) async {
         final MockMediaStreamTrack videoTrack = MockMediaStreamTrack();
 
         bool videoTrackStopped = false;
@@ -127,11 +118,7 @@ void main() {
         });
 
         when(
-          () => cameraService.getMediaStreamForOptions(
-            const CameraOptions(
-              audio: AudioConstraints(enabled: true),
-            ),
-          ),
+          () => cameraService.getMediaStreamForOptions(const CameraOptions()),
         ).thenAnswer(
           (_) => Future<MediaStream>.value(
             FakeMediaStream(<MediaStreamTrack>[videoTrack]),
@@ -2397,10 +2384,9 @@ void main() {
 
       testWidgets('onCameraResolutionChanged emits an empty stream',
           (WidgetTester tester) async {
-        expect(
-          CameraPlatform.instance.onCameraResolutionChanged(cameraId),
-          emits(isEmpty),
-        );
+        final Stream<CameraResolutionChangedEvent> stream =
+            CameraPlatform.instance.onCameraResolutionChanged(cameraId);
+        expect(await stream.isEmpty, isTrue);
       });
 
       testWidgets(
@@ -2981,20 +2967,18 @@ void main() {
               (WidgetTester tester) async {
             when(() => window.screen).thenReturn(null);
 
-            expect(
-              CameraPlatform.instance.onDeviceOrientationChanged(),
-              emits(isEmpty),
-            );
+            final Stream<DeviceOrientationChangedEvent> stream =
+                CameraPlatform.instance.onDeviceOrientationChanged();
+            expect(await stream.isEmpty, isTrue);
           });
 
           testWidgets('when screen orientation is not supported',
               (WidgetTester tester) async {
             when(() => screen.orientation).thenReturn(null);
 
-            expect(
-              CameraPlatform.instance.onDeviceOrientationChanged(),
-              emits(isEmpty),
-            );
+            final Stream<DeviceOrientationChangedEvent> stream =
+                CameraPlatform.instance.onDeviceOrientationChanged();
+            expect(await stream.isEmpty, isTrue);
           });
         });
 

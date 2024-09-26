@@ -26,7 +26,6 @@ import io.flutter.embedding.android.FlutterView;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugins.webviewflutter.GeneratedAndroidWebView.WebViewFlutterApi;
 import io.flutter.plugins.webviewflutter.WebViewHostApiImpl.WebViewPlatformView;
-import io.flutter.plugins.webviewflutter.utils.TestUtils;
 import java.util.HashMap;
 import java.util.Objects;
 import org.junit.After;
@@ -345,15 +344,39 @@ public class WebViewTest {
   @Test
   public void setImportantForAutofillForParentFlutterView() {
     final WebViewPlatformView webView =
-        new WebViewPlatformView(mockContext, mockBinaryMessenger, testInstanceManager);
+        new WebViewPlatformView(
+            mockContext,
+            mockBinaryMessenger,
+            testInstanceManager,
+            (int version) -> version <= Build.VERSION_CODES.O);
 
     final WebViewPlatformView webViewSpy = spy(webView);
     final FlutterView mockFlutterView = mock(FlutterView.class);
     when(webViewSpy.getParent()).thenReturn(mockFlutterView);
 
-    TestUtils.setFinalStatic(Build.VERSION.class, "SDK_INT", Build.VERSION_CODES.O);
     webViewSpy.onAttachedToWindow();
 
     verify(mockFlutterView).setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_YES);
+  }
+
+  @Test
+  public void onScrollChanged() {
+    final InstanceManager instanceManager = InstanceManager.create(identifier -> {});
+
+    final WebViewFlutterApiImpl flutterApiImpl =
+        new WebViewFlutterApiImpl(mockBinaryMessenger, instanceManager);
+
+    final WebViewFlutterApi mockFlutterApi = mock(WebViewFlutterApi.class);
+    flutterApiImpl.setApi(mockFlutterApi);
+    flutterApiImpl.create(mockWebView, reply -> {});
+
+    flutterApiImpl.onScrollChanged(mockWebView, 0L, 1L, 2L, 3L, reply -> {});
+
+    final long instanceIdentifier =
+        Objects.requireNonNull(instanceManager.getIdentifierForStrongReference(mockWebView));
+    verify(mockFlutterApi)
+        .onScrollChanged(eq(instanceIdentifier), eq(0L), eq(1L), eq(2L), eq(3L), any());
+
+    instanceManager.stopFinalizationListener();
   }
 }

@@ -1,3 +1,37 @@
+## NEXT
+
+* Updates minimum supported SDK version to Flutter 3.13/Dart 3.1.
+* Updates support matrix in README to indicate that iOS 11 is no longer supported.
+* Clients on versions of Flutter that still support iOS 11 can continue to use this
+  package with iOS 11, but will not receive any further updates to the iOS implementation.
+* Updates minimum supported SDK version to Flutter 3.10/Dart 3.0.
+
+## 2.2.2
+
+* Updates documentation for `containsKey`.
+
+## 2.2.1
+
+* Adds pub topics to package metadata.
+* Updates minimum supported SDK version to Flutter 3.7/Dart 2.19.
+* Fixes the example app to be debuggable on Android.
+* Deletes deprecated splash screen meta-data element.
+
+## 2.2.0
+
+* Adds `allowList` option to setPrefix.
+
+## 2.1.2
+
+* Fixes singleton initialization race condition introduced during NNBD
+  transition.
+* Updates minimum supported macOS version to 10.14.
+* Updates minimum supported SDK version to Flutter 3.3/Dart 2.18.
+
+## 2.1.1
+
+* Updates iOS minimum version in README.
+
 ## 2.1.0
 
 * Adds `setPrefix` method.

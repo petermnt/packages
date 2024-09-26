@@ -49,7 +49,7 @@
        makeWithSource:@"mySource"
         injectionTime:[FWFWKUserScriptInjectionTimeEnumData
                           makeWithValue:FWFWKUserScriptInjectionTimeEnumAtDocumentStart]
-      isMainFrameOnly:@NO]);
+      isMainFrameOnly:NO]);
 
   XCTAssertEqualObjects(userScript.source, @"mySource");
   XCTAssertEqual(userScript.injectionTime, WKUserScriptInjectionTimeAtDocumentStart);
@@ -94,18 +94,24 @@
   OCMStub([mockFrameInfo isMainFrame]).andReturn(YES);
 
   FWFWKFrameInfoData *targetFrameData = FWFWKFrameInfoDataFromNativeWKFrameInfo(mockFrameInfo);
-  XCTAssertEqualObjects(targetFrameData.isMainFrame, @YES);
+  XCTAssertEqual(targetFrameData.isMainFrame, YES);
 }
 
 - (void)testFWFNSErrorDataFromNSError {
+  NSObject *unsupportedType = [[NSObject alloc] init];
   NSError *error = [NSError errorWithDomain:@"domain"
                                        code:23
-                                   userInfo:@{NSLocalizedDescriptionKey : @"description"}];
+                                   userInfo:@{@"a" : @"b", @"c" : unsupportedType}];
 
   FWFNSErrorData *data = FWFNSErrorDataFromNativeNSError(error);
-  XCTAssertEqualObjects(data.code, @23);
+  XCTAssertEqual(data.code, 23);
   XCTAssertEqualObjects(data.domain, @"domain");
-  XCTAssertEqualObjects(data.localizedDescription, @"description");
+
+  NSDictionary *userInfo = @{
+    @"a" : @"b",
+    @"c" : [NSString stringWithFormat:@"Unsupported Type: %@", unsupportedType.description]
+  };
+  XCTAssertEqualObjects(data.userInfo, userInfo);
 }
 
 - (void)testFWFWKScriptMessageDataFromWKScriptMessage {
@@ -127,7 +133,7 @@
   FWFWKSecurityOriginData *data =
       FWFWKSecurityOriginDataFromNativeWKSecurityOrigin(mockSecurityOrigin);
   XCTAssertEqualObjects(data.host, @"host");
-  XCTAssertEqualObjects(data.port, @(2));
+  XCTAssertEqual(data.port, 2);
   XCTAssertEqualObjects(data.protocol, @"protocol");
 }
 
@@ -154,5 +160,45 @@
       FWFWKMediaCaptureTypeDataFromNativeWKMediaCaptureType(WKMediaCaptureTypeCameraAndMicrophone)
           .value,
       FWFWKMediaCaptureTypeCameraAndMicrophone);
+}
+
+- (void)testNSKeyValueChangeKeyConversionReturnsUnknownIfUnrecognized {
+  XCTAssertEqual(
+      FWFNSKeyValueChangeKeyEnumDataFromNativeNSKeyValueChangeKey(@"SomeUnknownValue").value,
+      FWFNSKeyValueChangeKeyEnumUnknown);
+}
+
+- (void)testWKNavigationTypeConversionReturnsUnknownIfUnrecognized {
+  XCTAssertEqual(FWFWKNavigationTypeFromNativeWKNavigationType(-15), FWFWKNavigationTypeUnknown);
+}
+
+- (void)testFWFWKNavigationResponseDataFromNativeNavigationResponse {
+  WKNavigationResponse *mockResponse = OCMClassMock([WKNavigationResponse class]);
+  OCMStub([mockResponse isForMainFrame]).andReturn(YES);
+
+  NSHTTPURLResponse *mockURLResponse = OCMClassMock([NSHTTPURLResponse class]);
+  OCMStub([mockURLResponse statusCode]).andReturn(1);
+  OCMStub([mockResponse response]).andReturn(mockURLResponse);
+
+  FWFWKNavigationResponseData *data =
+      FWFWKNavigationResponseDataFromNativeNavigationResponse(mockResponse);
+  XCTAssertEqual(data.forMainFrame, YES);
+}
+
+- (void)testFWFNSHttpUrlResponseDataFromNativeNSURLResponse {
+  NSHTTPURLResponse *mockResponse = OCMClassMock([NSHTTPURLResponse class]);
+  OCMStub([mockResponse statusCode]).andReturn(1);
+
+  FWFNSHttpUrlResponseData *data = FWFNSHttpUrlResponseDataFromNativeNSURLResponse(mockResponse);
+  XCTAssertEqual(data.statusCode, 1);
+}
+
+- (void)testFWFNativeWKNavigationResponsePolicyFromEnum {
+  XCTAssertEqual(
+      FWFNativeWKNavigationResponsePolicyFromEnum(FWFWKNavigationResponsePolicyEnumAllow),
+      WKNavigationResponsePolicyAllow);
+  XCTAssertEqual(
+      FWFNativeWKNavigationResponsePolicyFromEnum(FWFWKNavigationResponsePolicyEnumCancel),
+      WKNavigationResponsePolicyCancel);
 }
 @end

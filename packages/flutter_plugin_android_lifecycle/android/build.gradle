@@ -22,8 +22,11 @@ rootProject.allprojects {
 apply plugin: 'com.android.library'
 
 android {
-    namespace 'io.flutter.plugins.flutter_plugin_android_lifecycle'
-    compileSdkVersion 33
+    // Conditional for compatibility with AGP <4.2.
+    if (project.android.hasProperty("namespace")) {
+        namespace 'io.flutter.plugins.flutter_plugin_android_lifecycle'
+    }
+    compileSdk 34
 
     defaultConfig {
         minSdkVersion 16
@@ -40,11 +43,10 @@ android {
         checkAllWarnings true
         warningsAsErrors true
         disable 'AndroidGradlePluginVersion', 'InvalidPackage', 'GradleDependency'
-        baseline file("lint-baseline.xml")
     }
 
     dependencies {
-        implementation "androidx.annotation:annotation:1.5.0"
+        implementation "androidx.annotation:annotation:1.7.0"
     }
 
 
@@ -65,4 +67,3 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.mockito:mockito-core:5.1.1'
 }
-

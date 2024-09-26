@@ -1,6 +1,6 @@
 # WebView for Flutter
 
-<?code-excerpt path-base="excerpts/packages/webview_flutter_example"?>
+<?code-excerpt path-base="example/lib"?>
 
 [![pub package](https://img.shields.io/pub/v/webview_flutter.svg)](https://pub.dev/packages/webview_flutter)
 
@@ -11,7 +11,7 @@ On Android the WebView widget is backed by a [WebView](https://developer.android
 
 |             | Android        | iOS   |
 |-------------|----------------|-------|
-| **Support** | SDK 19+ or 20+ | 11.0+ |
+| **Support** | SDK 19+ or 20+ | 12.0+ |
 
 ## Usage
 Add `webview_flutter` as a [dependency in your pubspec.yaml file](https://pub.dev/packages/webview_flutter/install).

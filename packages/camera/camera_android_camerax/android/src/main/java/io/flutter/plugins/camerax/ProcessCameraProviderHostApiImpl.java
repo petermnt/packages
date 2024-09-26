@@ -6,6 +6,7 @@ package io.flutter.plugins.camerax;
 
 import android.content.Context;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraInfo;
 import androidx.camera.core.CameraSelector;
@@ -24,17 +25,19 @@ public class ProcessCameraProviderHostApiImpl implements ProcessCameraProviderHo
   private final BinaryMessenger binaryMessenger;
   private final InstanceManager instanceManager;
 
-  private Context context;
-  private LifecycleOwner lifecycleOwner;
+  @Nullable private Context context;
+  @Nullable private LifecycleOwner lifecycleOwner;
 
   public ProcessCameraProviderHostApiImpl(
-      BinaryMessenger binaryMessenger, InstanceManager instanceManager, Context context) {
+      @NonNull BinaryMessenger binaryMessenger,
+      @NonNull InstanceManager instanceManager,
+      @NonNull Context context) {
     this.binaryMessenger = binaryMessenger;
     this.instanceManager = instanceManager;
     this.context = context;
   }
 
-  public void setLifecycleOwner(LifecycleOwner lifecycleOwner) {
+  public void setLifecycleOwner(@Nullable LifecycleOwner lifecycleOwner) {
     this.lifecycleOwner = lifecycleOwner;
   }
 
@@ -45,7 +48,7 @@ public class ProcessCameraProviderHostApiImpl implements ProcessCameraProviderHo
    * <p>If using the camera plugin in an add-to-app context, ensure that a new instance of the
    * {@code ProcessCameraProvider} is fetched via {@code #getInstance} anytime the context changes.
    */
-  public void setContext(Context context) {
+  public void setContext(@NonNull Context context) {
     this.context = context;
   }
 
@@ -54,7 +57,11 @@ public class ProcessCameraProviderHostApiImpl implements ProcessCameraProviderHo
    * for the current {@code Context}.
    */
   @Override
-  public void getInstance(GeneratedCameraXLibrary.Result<Long> result) {
+  public void getInstance(@NonNull GeneratedCameraXLibrary.Result<Long> result) {
+    if (context == null) {
+      throw new IllegalStateException("Context must be set to get ProcessCameraProvider instance.");
+    }
+
     ListenableFuture<ProcessCameraProvider> processCameraProviderFuture =
         ProcessCameraProvider.getInstance(context);
 
@@ -78,13 +85,14 @@ public class ProcessCameraProviderHostApiImpl implements ProcessCameraProviderHo
   }
 
   /** Returns cameras available to the {@code ProcessCameraProvider}. */
+  @NonNull
   @Override
   public List<Long> getAvailableCameraInfos(@NonNull Long identifier) {
     ProcessCameraProvider processCameraProvider =
         (ProcessCameraProvider) Objects.requireNonNull(instanceManager.getInstance(identifier));
 
     List<CameraInfo> availableCameras = processCameraProvider.getAvailableCameraInfos();
-    List<Long> availableCamerasIds = new ArrayList<Long>();
+    List<Long> availableCamerasIds = new ArrayList<>();
     final CameraInfoFlutterApiImpl cameraInfoFlutterApi =
         new CameraInfoFlutterApiImpl(binaryMessenger, instanceManager);
 
@@ -103,10 +111,15 @@ public class ProcessCameraProviderHostApiImpl implements ProcessCameraProviderHo
    * that {@code LifecycleOwner} reflects.
    */
   @Override
-  public Long bindToLifecycle(
+  public @NonNull Long bindToLifecycle(
       @NonNull Long identifier,
       @NonNull Long cameraSelectorIdentifier,
       @NonNull List<Long> useCaseIds) {
+    if (lifecycleOwner == null) {
+      throw new IllegalStateException(
+          "LifecycleOwner must be set to get ProcessCameraProvider instance.");
+    }
+
     ProcessCameraProvider processCameraProvider =
         (ProcessCameraProvider) Objects.requireNonNull(instanceManager.getInstance(identifier));
     CameraSelector cameraSelector =
@@ -128,11 +141,11 @@ public class ProcessCameraProviderHostApiImpl implements ProcessCameraProviderHo
       cameraFlutterApi.create(camera, result -> {});
     }
 
-    return instanceManager.getIdentifierForStrongReference(camera);
+    return Objects.requireNonNull(instanceManager.getIdentifierForStrongReference(camera));
   }
 
   @Override
-  public Boolean isBound(@NonNull Long identifier, @NonNull Long useCaseIdentifier) {
+  public @NonNull Boolean isBound(@NonNull Long identifier, @NonNull Long useCaseIdentifier) {
     ProcessCameraProvider processCameraProvider =
         (ProcessCameraProvider) Objects.requireNonNull(instanceManager.getInstance(identifier));
     UseCase useCase =

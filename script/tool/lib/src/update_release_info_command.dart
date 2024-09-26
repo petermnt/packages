@@ -4,12 +4,11 @@
 
 import 'package:args/command_runner.dart';
 import 'package:file/file.dart';
-import 'package:git/git.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
-import 'common/core.dart';
 import 'common/git_version_finder.dart';
+import 'common/output_utils.dart';
 import 'common/package_looping_command.dart';
 import 'common/package_state_utils.dart';
 import 'common/repository_package.dart';
@@ -36,9 +35,9 @@ enum _ChangelogUpdateState {
 class UpdateReleaseInfoCommand extends PackageLoopingCommand {
   /// Creates a publish metadata updater command instance.
   UpdateReleaseInfoCommand(
-    Directory packagesDir, {
-    GitDir? gitDir,
-  }) : super(packagesDir, gitDir: gitDir) {
+    super.packagesDir, {
+    super.gitDir,
+  }) {
     argParser.addOption(_changelogFlag,
         mandatory: true,
         help: 'The changelog entry to add. '
@@ -101,10 +100,8 @@ class UpdateReleaseInfoCommand extends PackageLoopingCommand {
     switch (getStringArg(_versionTypeFlag)) {
       case _versionMinor:
         _versionChange = _VersionIncrementType.minor;
-        break;
       case _versionBugfix:
         _versionChange = _VersionIncrementType.bugfix;
-        break;
       case _versionMinimal:
         final GitVersionFinder gitVersionFinder = await retrieveVersionFinder();
         // If the line below fails with "Not a valid object name FETCH_HEAD"
@@ -114,10 +111,8 @@ class UpdateReleaseInfoCommand extends PackageLoopingCommand {
         _changedFiles = await gitVersionFinder.getChangedFiles();
         // Anothing other than a fixed change is null.
         _versionChange = null;
-        break;
       case _versionNext:
         _versionChange = null;
-        break;
       default:
         throw UnimplementedError('Unimplemented version change type');
     }
@@ -170,10 +165,8 @@ class UpdateReleaseInfoCommand extends PackageLoopingCommand {
     switch (updateOutcome) {
       case _ChangelogUpdateOutcome.addedSection:
         print('${indentation}Added a $nextVersionString section.');
-        break;
       case _ChangelogUpdateOutcome.updatedSection:
         print('${indentation}Updated NEXT section.');
-        break;
       case _ChangelogUpdateOutcome.failed:
         return PackageResult.fail(<String>['Could not update CHANGELOG.md.']);
     }
@@ -218,7 +211,6 @@ class UpdateReleaseInfoCommand extends PackageLoopingCommand {
             ].forEach(newChangelog.writeln);
             state = _ChangelogUpdateState.finishedUpdating;
           }
-          break;
         case _ChangelogUpdateState.findingFirstListItem:
           final RegExpMatch? match = listItemPattern.firstMatch(line);
           if (match != null) {
@@ -240,11 +232,9 @@ class UpdateReleaseInfoCommand extends PackageLoopingCommand {
             printError('  Existing NEXT section has unrecognized format.');
             return _ChangelogUpdateOutcome.failed;
           }
-          break;
         case _ChangelogUpdateState.finishedUpdating:
           // Once changes are done, add the rest of the lines as-is.
           newChangelog.writeln(line);
-          break;
       }
     }
 

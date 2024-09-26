@@ -1,3 +1,62 @@
+## 2.5.1
+
+* Makes the tile overlay callback invoke the platform channel on the platform thread.
+
+## 2.5.0
+
+* Adds support for `MapConfiguration.style`.
+* Adds support for `getStyleError`.
+
+## 2.4.2
+
+* Fixes a bug in "takeSnapshot" function that incorrectly returns a blank image on iOS 17.
+
+## 2.4.1
+
+* Restores the workaround to exclude arm64 simulator builds, as it is still necessary for applications targeting iOS 12.
+
+## 2.4.0
+
+* Adds support for arm64 simulators.
+* Updates minimum supported SDK version to Flutter 3.16.6.
+* Removes support for iOS 11.
+
+## 2.3.6
+
+* Adds privacy manifest.
+
+## 2.3.5
+
+* Updates minimum required plugin_platform_interface version to 2.1.7.
+
+## 2.3.4
+
+* Fixes new lint warnings.
+
+## 2.3.3
+
+* Adds support for version 8 of the Google Maps SDK in apps targeting iOS 14+.
+* Updates minimum supported SDK version to Flutter 3.10/Dart 3.0.
+
+## 2.3.2
+
+* Fixes an issue where the onDragEnd callback for marker is not called.
+
+## 2.3.1
+
+* Adds pub topics to package metadata.
+
+## 2.3.0
+
+* Adds implementation for `cloudMapId` parameter to support cloud-based maps styling.
+* Updates minimum supported SDK version to Flutter 3.7/Dart 2.19.
+* Fixes unawaited_futures violations.
+
+## 2.2.3
+
+* Removes obsolete null checks on non-nullable values.
+* Updates minimum supported SDK version to Flutter 3.3/Dart 2.18.
+
 ## 2.2.2
 
 * Sets an upper bound on the `GoogleMaps` SDK version that can be used, to
@@ -15,7 +74,6 @@
 ## 2.1.14
 
 * Updates links for the merge of flutter/plugins into flutter/packages.
-* Updates minimum Flutter version to 3.0.
 
 ## 2.1.13
 

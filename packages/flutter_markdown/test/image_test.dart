@@ -4,6 +4,7 @@
 
 import 'dart:io' as io;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -32,14 +33,13 @@ void defineTests() {
           ),
         );
 
-        final Iterable<RichText> texts =
-            tester.widgetList(find.byType(RichText));
-        final RichText firstTextWidget = texts.first;
-        final TextSpan firstTextSpan = firstTextWidget.text as TextSpan;
+        final Iterable<Text> texts = tester.widgetList(find.byType(Text));
+        final Text firstTextWidget = texts.first;
+        final TextSpan firstTextSpan = firstTextWidget.textSpan! as TextSpan;
         final Image image = tester.widget(find.byType(Image));
         final NetworkImage networkImage = image.image as NetworkImage;
-        final RichText secondTextWidget = texts.last;
-        final TextSpan secondTextSpan = secondTextWidget.text as TextSpan;
+        final Text secondTextWidget = texts.last;
+        final TextSpan secondTextSpan = secondTextWidget.textSpan! as TextSpan;
 
         expect(firstTextSpan.text, 'textbefore ');
         expect(firstTextSpan.style!.fontStyle, FontStyle.italic);
@@ -90,7 +90,7 @@ void defineTests() {
     );
 
     testWidgets(
-      'local files should be files',
+      'local files should be files on non-web',
       (WidgetTester tester) async {
         const String data = '![alt](http.png)';
         await tester.pumpWidget(
@@ -105,6 +105,26 @@ void defineTests() {
 
         expect(image.image is FileImage, isTrue);
       },
+      skip: kIsWeb,
+    );
+
+    testWidgets(
+      'local files should be network on web',
+      (WidgetTester tester) async {
+        const String data = '![alt](http.png)';
+        await tester.pumpWidget(
+          boilerplate(
+            const Markdown(data: data),
+          ),
+        );
+
+        final Iterable<Widget> widgets = tester.allWidgets;
+        final Image image =
+            widgets.firstWhere((Widget widget) => widget is Image) as Image;
+
+        expect(image.image is NetworkImage, isTrue);
+      },
+      skip: !kIsWeb,
     );
 
     testWidgets(
@@ -150,6 +170,7 @@ void defineTests() {
             matchesGoldenFile(
                 'assets/images/golden/image_test/resource_asset_logo.png'));
       },
+      skip: kIsWeb, // Goldens are platform-specific.
     );
 
     testWidgets(
@@ -168,6 +189,7 @@ void defineTests() {
         expect(image.width, 50);
         expect(image.height, 50);
       },
+      skip: kIsWeb,
     );
 
     testWidgets(
@@ -180,8 +202,8 @@ void defineTests() {
           ),
         );
 
-        final RichText richText = tester.widget(find.byType(RichText));
-        final TextSpan textSpan = richText.text as TextSpan;
+        final Text text = tester.widget(find.byType(Text));
+        final TextSpan textSpan = text.textSpan! as TextSpan;
         expect(textSpan.text, 'Hello ');
         expect(textSpan.style, isNotNull);
       },
@@ -239,14 +261,13 @@ void defineTests() {
             tester.widget(find.byType(GestureDetector));
         detector.onTap!();
 
-        final Iterable<RichText> texts =
-            tester.widgetList(find.byType(RichText));
-        final RichText firstTextWidget = texts.first;
-        final TextSpan firstSpan = firstTextWidget.text as TextSpan;
+        final Iterable<Text> texts = tester.widgetList(find.byType(Text));
+        final Text firstTextWidget = texts.first;
+        final TextSpan firstSpan = firstTextWidget.textSpan! as TextSpan;
         (firstSpan.recognizer as TapGestureRecognizer?)!.onTap!();
 
-        final RichText lastTextWidget = texts.last;
-        final TextSpan lastSpan = lastTextWidget.text as TextSpan;
+        final Text lastTextWidget = texts.last;
+        final TextSpan lastSpan = lastTextWidget.textSpan! as TextSpan;
         (lastSpan.recognizer as TapGestureRecognizer?)!.onTap!();
 
         expect(firstSpan.children, null);
@@ -284,18 +305,17 @@ void defineTests() {
           ),
         );
 
-        final Iterable<RichText> texts =
-            tester.widgetList(find.byType(RichText));
-        final RichText firstTextWidget = texts.first;
-        final TextSpan firstSpan = firstTextWidget.text as TextSpan;
+        final Iterable<Text> texts = tester.widgetList(find.byType(Text));
+        final Text firstTextWidget = texts.first;
+        final TextSpan firstSpan = firstTextWidget.textSpan! as TextSpan;
         (firstSpan.recognizer as TapGestureRecognizer?)!.onTap!();
 
         final GestureDetector detector =
             tester.widget(find.byType(GestureDetector));
         detector.onTap!();
 
-        final RichText lastTextWidget = texts.last;
-        final TextSpan lastSpan = lastTextWidget.text as TextSpan;
+        final Text lastTextWidget = texts.last;
+        final TextSpan lastSpan = lastTextWidget.textSpan! as TextSpan;
         (lastSpan.recognizer as TapGestureRecognizer?)!.onTap!();
 
         expect(firstSpan.children, null);
@@ -360,6 +380,7 @@ void defineTests() {
             matchesGoldenFile(
                 'assets/images/golden/image_test/custom_builder_asset_logo.png'));
       },
+      skip: kIsWeb, // Goldens are platform-specific.
     );
   });
 }

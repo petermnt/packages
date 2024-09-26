@@ -16,8 +16,7 @@ void main() {
   setUp(() {
     plugin = FileSelectorLinux();
     log = <MethodCall>[];
-    _ambiguate(TestDefaultBinaryMessengerBinding.instance)!
-        .defaultBinaryMessenger
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
       plugin.channel,
       (MethodCall methodCall) async {
@@ -32,21 +31,18 @@ void main() {
     expect(FileSelectorPlatform.instance, isA<FileSelectorLinux>());
   });
 
-  group('#openFile', () {
+  group('openFile', () {
     test('passes the accepted type groups correctly', () async {
       const XTypeGroup group = XTypeGroup(
         label: 'text',
         extensions: <String>['txt'],
         mimeTypes: <String>['text/plain'],
-        macUTIs: <String>['public.text'],
       );
 
       const XTypeGroup groupTwo = XTypeGroup(
         label: 'image',
         extensions: <String>['jpg'],
         mimeTypes: <String>['image/jpg'],
-        macUTIs: <String>['public.image'],
-        webWildCards: <String>['image/*'],
       );
 
       await plugin.openFile(acceptedTypeGroups: <XTypeGroup>[group, groupTwo]);
@@ -138,21 +134,18 @@ void main() {
     });
   });
 
-  group('#openFiles', () {
+  group('openFiles', () {
     test('passes the accepted type groups correctly', () async {
       const XTypeGroup group = XTypeGroup(
         label: 'text',
         extensions: <String>['txt'],
         mimeTypes: <String>['text/plain'],
-        macUTIs: <String>['public.text'],
       );
 
       const XTypeGroup groupTwo = XTypeGroup(
         label: 'image',
         extensions: <String>['jpg'],
         mimeTypes: <String>['image/jpg'],
-        macUTIs: <String>['public.image'],
-        webWildCards: <String>['image/*'],
       );
 
       await plugin.openFiles(acceptedTypeGroups: <XTypeGroup>[group, groupTwo]);
@@ -215,7 +208,7 @@ void main() {
       );
 
       await expectLater(
-          plugin.openFile(acceptedTypeGroups: <XTypeGroup>[group]),
+          plugin.openFiles(acceptedTypeGroups: <XTypeGroup>[group]),
           throwsArgumentError);
     });
 
@@ -224,7 +217,7 @@ void main() {
         label: 'any',
       );
 
-      await plugin.openFile(acceptedTypeGroups: <XTypeGroup>[group]);
+      await plugin.openFiles(acceptedTypeGroups: <XTypeGroup>[group]);
 
       expectMethodCall(
         log,
@@ -238,27 +231,131 @@ void main() {
           ],
           'initialDirectory': null,
           'confirmButtonText': null,
-          'multiple': false,
+          'multiple': true,
         },
       );
     });
   });
 
-  group('#getSavePath', () {
+  group('getSaveLocation', () {
     test('passes the accepted type groups correctly', () async {
       const XTypeGroup group = XTypeGroup(
         label: 'text',
         extensions: <String>['txt'],
         mimeTypes: <String>['text/plain'],
-        macUTIs: <String>['public.text'],
       );
 
       const XTypeGroup groupTwo = XTypeGroup(
         label: 'image',
         extensions: <String>['jpg'],
         mimeTypes: <String>['image/jpg'],
-        macUTIs: <String>['public.image'],
-        webWildCards: <String>['image/*'],
+      );
+
+      await plugin
+          .getSaveLocation(acceptedTypeGroups: <XTypeGroup>[group, groupTwo]);
+
+      expectMethodCall(
+        log,
+        'getSavePath',
+        arguments: <String, dynamic>{
+          'acceptedTypeGroups': <Map<String, dynamic>>[
+            <String, Object>{
+              'label': 'text',
+              'extensions': <String>['*.txt'],
+              'mimeTypes': <String>['text/plain'],
+            },
+            <String, Object>{
+              'label': 'image',
+              'extensions': <String>['*.jpg'],
+              'mimeTypes': <String>['image/jpg'],
+            },
+          ],
+          'initialDirectory': null,
+          'suggestedName': null,
+          'confirmButtonText': null,
+        },
+      );
+    });
+
+    test('passes initialDirectory correctly', () async {
+      await plugin.getSaveLocation(
+          options:
+              const SaveDialogOptions(initialDirectory: '/example/directory'));
+
+      expectMethodCall(
+        log,
+        'getSavePath',
+        arguments: <String, dynamic>{
+          'initialDirectory': '/example/directory',
+          'suggestedName': null,
+          'confirmButtonText': null,
+        },
+      );
+    });
+
+    test('passes confirmButtonText correctly', () async {
+      await plugin.getSaveLocation(
+          options: const SaveDialogOptions(confirmButtonText: 'Open File'));
+
+      expectMethodCall(
+        log,
+        'getSavePath',
+        arguments: <String, dynamic>{
+          'initialDirectory': null,
+          'suggestedName': null,
+          'confirmButtonText': 'Open File',
+        },
+      );
+    });
+
+    test('throws for a type group that does not support Linux', () async {
+      const XTypeGroup group = XTypeGroup(
+        label: 'images',
+        webWildCards: <String>['images/*'],
+      );
+
+      await expectLater(
+          plugin.getSaveLocation(acceptedTypeGroups: <XTypeGroup>[group]),
+          throwsArgumentError);
+    });
+
+    test('passes a wildcard group correctly', () async {
+      const XTypeGroup group = XTypeGroup(
+        label: 'any',
+      );
+
+      await plugin.getSaveLocation(acceptedTypeGroups: <XTypeGroup>[group]);
+
+      expectMethodCall(
+        log,
+        'getSavePath',
+        arguments: <String, dynamic>{
+          'acceptedTypeGroups': <Map<String, dynamic>>[
+            <String, Object>{
+              'label': 'any',
+              'extensions': <String>['*'],
+            },
+          ],
+          'initialDirectory': null,
+          'suggestedName': null,
+          'confirmButtonText': null,
+        },
+      );
+    });
+  });
+
+  group('getSavePath (deprecated)', () {
+    test('passes the accepted type groups correctly', () async {
+      const XTypeGroup group = XTypeGroup(
+        label: 'text',
+        extensions: <String>['txt'],
+        mimeTypes: <String>['text/plain'],
+      );
+
+      const XTypeGroup groupTwo = XTypeGroup(
+        label: 'image',
+        extensions: <String>['jpg'],
+        mimeTypes: <String>['image/jpg'],
       );
 
       await plugin
@@ -322,7 +419,7 @@ void main() {
       );
 
       await expectLater(
-          plugin.openFile(acceptedTypeGroups: <XTypeGroup>[group]),
+          plugin.getSavePath(acceptedTypeGroups: <XTypeGroup>[group]),
           throwsArgumentError);
     });
 
@@ -331,11 +428,11 @@ void main() {
         label: 'any',
       );
 
-      await plugin.openFile(acceptedTypeGroups: <XTypeGroup>[group]);
+      await plugin.getSavePath(acceptedTypeGroups: <XTypeGroup>[group]);
 
       expectMethodCall(
         log,
-        'openFile',
+        'getSavePath',
         arguments: <String, dynamic>{
           'acceptedTypeGroups': <Map<String, dynamic>>[
             <String, Object>{
@@ -344,14 +441,14 @@ void main() {
             },
           ],
           'initialDirectory': null,
+          'suggestedName': null,
           'confirmButtonText': null,
-          'multiple': false,
         },
       );
     });
   });
 
-  group('#getDirectoryPath', () {
+  group('getDirectoryPath', () {
     test('passes initialDirectory correctly', () async {
       await plugin.getDirectoryPath(initialDirectory: '/example/directory');
 
@@ -378,7 +475,7 @@ void main() {
     });
   });
 
-  group('#getDirectoryPaths', () {
+  group('getDirectoryPaths', () {
     test('passes initialDirectory correctly', () async {
       await plugin.getDirectoryPaths(initialDirectory: '/example/directory');
 
@@ -429,9 +526,3 @@ void expectMethodCall(
 }) {
   expect(log, <Matcher>[isMethodCall(methodName, arguments: arguments)]);
 }
-
-/// This allows a value of type T or T? to be treated as a value of type T?.
-///
-/// We use this so that APIs that have become non-nullable can still be used
-/// with `!` and `?` on the stable branch.
-T? _ambiguate<T>(T? value) => value;

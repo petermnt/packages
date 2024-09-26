@@ -127,11 +127,19 @@ class MemoryStdout extends MemoryIOSink implements io.Stdout {
   @override
   bool get hasTerminal => _hasTerminal;
   set hasTerminal(bool value) {
-    assert(value != null);
     _hasTerminal = value;
   }
 
   bool _hasTerminal = true;
+
+  @override
+  // ignore: override_on_non_overriding_member
+  String get lineTerminator => '\n';
+  @override
+  // ignore: override_on_non_overriding_member
+  set lineTerminator(String value) {
+    throw UnimplementedError('Setting the line terminator is not supported');
+  }
 
   @override
   io.IOSink get nonBlocking => this;
@@ -139,7 +147,6 @@ class MemoryStdout extends MemoryIOSink implements io.Stdout {
   @override
   bool get supportsAnsiEscapes => _supportsAnsiEscapes;
   set supportsAnsiEscapes(bool value) {
-    assert(value != null);
     _supportsAnsiEscapes = value;
   }
 

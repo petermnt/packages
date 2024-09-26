@@ -74,11 +74,11 @@ void defineTests() {
         );
 
         final Iterable<Widget> widgets = tester.allWidgets;
-        final RichText richText = widgets
-            .lastWhere((Widget widget) => widget is RichText) as RichText;
+        final Text text =
+            widgets.lastWhere((Widget widget) => widget is Text) as Text;
 
         expectTextStrings(widgets, <String>['Header', 'italic']);
-        expect(richText.text.style!.fontStyle, FontStyle.italic);
+        expect(text.textSpan!.style!.fontStyle, FontStyle.italic);
       },
     );
 
@@ -122,6 +122,66 @@ void defineTests() {
     );
 
     testWidgets(
+      'table cell vertical alignment should default to middle',
+      (WidgetTester tester) async {
+        final ThemeData theme =
+            ThemeData.light().copyWith(textTheme: textTheme);
+
+        const String data = '|Header|\n|----|\n|Column|';
+        final MarkdownStyleSheet style = MarkdownStyleSheet.fromTheme(theme);
+        await tester.pumpWidget(
+            boilerplate(MarkdownBody(data: data, styleSheet: style)));
+
+        final Table table = tester.widget(find.byType(Table));
+
+        expect(
+            table.defaultVerticalAlignment, TableCellVerticalAlignment.middle);
+      },
+    );
+
+    testWidgets(
+      'table cell vertical alignment should follow stylesheet',
+      (WidgetTester tester) async {
+        final ThemeData theme =
+            ThemeData.light().copyWith(textTheme: textTheme);
+
+        const String data = '|Header|\n|----|\n|Column|';
+        const TableCellVerticalAlignment tableCellVerticalAlignment =
+            TableCellVerticalAlignment.top;
+        final MarkdownStyleSheet style = MarkdownStyleSheet.fromTheme(theme)
+            .copyWith(tableVerticalAlignment: tableCellVerticalAlignment);
+
+        await tester.pumpWidget(
+            boilerplate(MarkdownBody(data: data, styleSheet: style)));
+
+        final Table table = tester.widget(find.byType(Table));
+
+        expect(table.defaultVerticalAlignment, tableCellVerticalAlignment);
+      },
+    );
+
+    testWidgets(
+      'table cell vertical alignment should follow stylesheet for different values',
+      (WidgetTester tester) async {
+        final ThemeData theme =
+            ThemeData.light().copyWith(textTheme: textTheme);
+
+        const String data = '|Header|\n|----|\n|Column|';
+        const TableCellVerticalAlignment tableCellVerticalAlignment =
+            TableCellVerticalAlignment.bottom;
+        final MarkdownStyleSheet style = MarkdownStyleSheet.fromTheme(theme)
+            .copyWith(tableVerticalAlignment: tableCellVerticalAlignment);
+
+        await tester.pumpWidget(
+            boilerplate(MarkdownBody(data: data, styleSheet: style)));
+
+        final Table table = tester.widget(find.byType(Table));
+
+        expect(table.defaultVerticalAlignment, tableCellVerticalAlignment);
+      },
+    );
+
+    testWidgets(
       'table with last row of empty table cells',
       (WidgetTester tester) async {
         final ThemeData theme =
@@ -141,13 +201,13 @@ void defineTests() {
 
         expectTableSize(2, 2);
 
-        expect(find.byType(RichText), findsNWidgets(4));
+        expect(find.byType(Text), findsNWidgets(4));
         final List<String?> cellText = find
-            .byType(RichText)
+            .byType(Text)
             .evaluate()
             .map((Element e) => e.widget)
-            .cast<RichText>()
-            .map((RichText richText) => richText.text)
+            .cast<Text>()
+            .map((Text text) => text.textSpan!)
             .cast<TextSpan>()
             .map((TextSpan e) => e.text)
             .toList();
@@ -183,11 +243,11 @@ void defineTests() {
 
         expect(find.byType(RichText), findsNWidgets(6));
         final List<String?> cellText = find
-            .byType(RichText)
+            .byType(Text)
             .evaluate()
             .map((Element e) => e.widget)
-            .cast<RichText>()
-            .map((RichText richText) => richText.text)
+            .cast<Text>()
+            .map((Text richText) => richText.textSpan!)
             .cast<TextSpan>()
             .map((TextSpan e) => e.text)
             .toList();
@@ -224,13 +284,13 @@ void defineTests() {
 
           expectTableSize(2, 2);
 
-          expect(find.byType(RichText), findsNWidgets(4));
+          expect(find.byType(Text), findsNWidgets(4));
           final List<String?> cellText = find
-              .byType(RichText)
+              .byType(Text)
               .evaluate()
               .map((Element e) => e.widget)
-              .cast<RichText>()
-              .map((RichText richText) => richText.text)
+              .cast<Text>()
+              .map((Text text) => text.textSpan!)
               .cast<TextSpan>()
               .map((TextSpan e) => e.text)
               .toList();
@@ -263,13 +323,13 @@ void defineTests() {
 
           expectTableSize(2, 2);
 
-          expect(find.byType(RichText), findsNWidgets(4));
+          expect(find.byType(Text), findsNWidgets(4));
           final List<String?> cellText = find
-              .byType(RichText)
+              .byType(Text)
               .evaluate()
               .map((Element e) => e.widget)
-              .cast<RichText>()
-              .map((RichText richText) => richText.text)
+              .cast<Text>()
+              .map((Text text) => text.textSpan!)
               .cast<TextSpan>()
               .map((TextSpan e) => e.text)
               .toList();
@@ -303,13 +363,13 @@ void defineTests() {
 
           expectTableSize(1, 3);
 
-          expect(find.byType(RichText), findsNWidgets(4));
+          expect(find.byType(Text), findsNWidgets(4));
           final List<String?> cellText = find
-              .byType(RichText)
+              .byType(Text)
               .evaluate()
               .map((Element e) => e.widget)
-              .cast<RichText>()
-              .map((RichText richText) => richText.text)
+              .cast<Text>()
+              .map((Text text) => text.textSpan!)
               .cast<TextSpan>()
               .map((TextSpan e) => e.text)
               .toList();
@@ -347,13 +407,13 @@ void defineTests() {
 
           expectTableSize(2, 2);
 
-          expect(find.byType(RichText), findsNWidgets(5));
+          expect(find.byType(Text), findsNWidgets(5));
           final List<String?> text = find
-              .byType(RichText)
+              .byType(Text)
               .evaluate()
               .map((Element e) => e.widget)
-              .cast<RichText>()
-              .map((RichText richText) => richText.text)
+              .cast<Text>()
+              .map((Text text) => text.textSpan!)
               .cast<TextSpan>()
               .map((TextSpan e) => e.text)
               .toList();
@@ -391,13 +451,13 @@ void defineTests() {
 
           expectTableSize(3, 2);
 
-          expect(find.byType(RichText), findsNWidgets(7));
+          expect(find.byType(Text), findsNWidgets(7));
           final List<String?> text = find
-              .byType(RichText)
+              .byType(Text)
               .evaluate()
               .map((Element e) => e.widget)
-              .cast<RichText>()
-              .map((RichText richText) => richText.text)
+              .cast<Text>()
+              .map((Text text) => text.textSpan!)
               .cast<TextSpan>()
               .map((TextSpan e) => e.text)
               .toList();
@@ -425,11 +485,11 @@ void defineTests() {
 
           expect(find.byType(Table), findsNothing);
           final List<String?> text = find
-              .byType(RichText)
+              .byType(Text)
               .evaluate()
               .map((Element e) => e.widget)
-              .cast<RichText>()
-              .map((RichText richText) => richText.text)
+              .cast<Text>()
+              .map((Text text) => text.textSpan!)
               .cast<TextSpan>()
               .map((TextSpan e) => e.text)
               .toList();
@@ -459,13 +519,13 @@ void defineTests() {
 
           expectTableSize(3, 2);
 
-          expect(find.byType(RichText), findsNWidgets(6));
+          expect(find.byType(Text), findsNWidgets(6));
           final List<String?> cellText = find
-              .byType(RichText)
+              .byType(Text)
               .evaluate()
               .map((Element e) => e.widget)
-              .cast<RichText>()
-              .map((RichText richText) => richText.text)
+              .cast<Text>()
+              .map((Text text) => text.textSpan!)
               .cast<TextSpan>()
               .map((TextSpan e) => e.text)
               .toList();
@@ -495,13 +555,13 @@ void defineTests() {
 
           expectTableSize(1, 2);
 
-          expect(find.byType(RichText), findsNWidgets(2));
+          expect(find.byType(Text), findsNWidgets(2));
           final List<String?> cellText = find
-              .byType(RichText)
+              .byType(Text)
               .evaluate()
               .map((Element e) => e.widget)
-              .cast<RichText>()
-              .map((RichText richText) => richText.text)
+              .cast<Text>()
+              .map((Text text) => text.textSpan!)
               .cast<TextSpan>()
               .map((TextSpan e) => e.text)
               .toList();

@@ -15,13 +15,16 @@ void main() {
   final Finder pnav = find.byKey(const Key('primaryNavigation'));
   final Finder pnav1 = find.byKey(const Key('primaryNavigation1'));
 
-  Future<void> updateScreen(double width, WidgetTester tester) async {
+  Future<void> updateScreen(double width, WidgetTester tester,
+      {int transitionDuration = 1000}) async {
     await tester.binding.setSurfaceSize(Size(width, 800));
     await tester.pumpWidget(
       MaterialApp(
         home: MediaQuery(
             data: MediaQueryData(size: Size(width, 800)),
-            child: const example.MyHomePage()),
+            child: example.MyHomePage(
+              transitionDuration: transitionDuration,
+            )),
       ),
     );
   }
@@ -33,7 +36,7 @@ void main() {
     expect(smallBody, findsOneWidget);
     expect(bnav, findsOneWidget);
     expect(tester.getTopLeft(smallBody), Offset.zero);
-    expect(tester.getTopLeft(bnav), const Offset(0, 744));
+    expect(tester.getTopLeft(bnav), const Offset(0, 720));
     expect(body, findsNothing);
     expect(largeBody, findsNothing);
     expect(pnav, findsNothing);
@@ -73,25 +76,42 @@ void main() {
 
     expect(tester.getTopLeft(b), const Offset(17.6, 0));
     expect(tester.getBottomRight(b),
-        offsetMoreOrLessEquals(const Offset(778.2, 755.2), epsilon: 1.0));
+        offsetMoreOrLessEquals(const Offset(778.2, 736), epsilon: 1.0));
     expect(tester.getTopLeft(sBody),
         offsetMoreOrLessEquals(const Offset(778.2, 0), epsilon: 1.0));
     expect(tester.getBottomRight(sBody),
-        offsetMoreOrLessEquals(const Offset(1178.2, 755.2), epsilon: 1.0));
+        offsetMoreOrLessEquals(const Offset(1178.2, 736), epsilon: 1.0));
 
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
 
     expect(tester.getTopLeft(b), const Offset(70.4, 0));
     expect(tester.getBottomRight(b),
-        offsetMoreOrLessEquals(const Offset(416.0, 788.8), epsilon: 1.0));
+        offsetMoreOrLessEquals(const Offset(416.0, 784), epsilon: 1.0));
     expect(tester.getTopLeft(sBody),
         offsetMoreOrLessEquals(const Offset(416, 0), epsilon: 1.0));
     expect(tester.getBottomRight(sBody),
-        offsetMoreOrLessEquals(const Offset(816, 788.8), epsilon: 1.0));
+        offsetMoreOrLessEquals(const Offset(816, 784), epsilon: 1.0));
 
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
+
+    expect(tester.getTopLeft(b), const Offset(88, 0));
+    expect(tester.getBottomRight(b), const Offset(400, 800));
+    expect(tester.getTopLeft(sBody), const Offset(400, 0));
+    expect(tester.getBottomRight(sBody), const Offset(800, 800));
+  });
+
+  testWidgets('animation plays correctly in declared duration',
+      (WidgetTester tester) async {
+    final Finder b = find.byKey(const Key('body'));
+    final Finder sBody = find.byKey(const Key('sBody'));
+
+    await updateScreen(400, tester, transitionDuration: 500);
+    await updateScreen(800, tester, transitionDuration: 500);
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(tester.getTopLeft(b), const Offset(88, 0));
     expect(tester.getBottomRight(b), const Offset(400, 800));
