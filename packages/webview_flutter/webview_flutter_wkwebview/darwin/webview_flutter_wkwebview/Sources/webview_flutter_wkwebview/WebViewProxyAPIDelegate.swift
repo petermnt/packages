@@ -19,6 +19,7 @@ class WebViewImpl: WKWebView {
       scrollView.contentInsetAdjustmentBehavior = .never
       scrollView.automaticallyAdjustsScrollIndicatorInsets = false
     #endif
+    applyVrtOverrides()
   }
 
   required init?(coder: NSCoder) {
