@@ -21,6 +21,7 @@ class WebViewImpl: WKWebView {
         scrollView.automaticallyAdjustsScrollIndicatorInsets = false
       }
     #endif
+    applyVrtOverrides()
   }
 
   required init?(coder: NSCoder) {
